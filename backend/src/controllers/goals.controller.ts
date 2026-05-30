@@ -5,6 +5,7 @@
 import { Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { decomposeGoal } from '../services/openai.service'
+import { processGamification } from '../services/gamification.service'
 
 const prisma = new PrismaClient()
 
@@ -204,20 +205,16 @@ export async function completeGoal(req: Request, res: Response): Promise<void> {
       return
     }
 
-    // Completar el objetivo y otorgar 100 XP al usuario en una transacción
-    const [updatedGoal] = await prisma.$transaction([
-      prisma.goal.update({
-        where: { id },
-        data: { status: 'COMPLETED', completedAt: new Date() },
-      }),
-      // Sumar 100 XP por completar un objetivo completo
-      prisma.user.update({
-        where: { id: userId },
-        data: { xp: { increment: 100 } },
-      }),
-    ])
+    // Completar el objetivo en una transacción
+    const updatedGoal = await prisma.goal.update({
+      where: { id },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    })
 
-    res.json(updatedGoal)
+    // Sumar 100 XP por completar un objetivo completo usando el servicio de gamificación
+    const { leveledUp } = await processGamification(userId, 100)
+
+    res.json({ ...updatedGoal, leveledUp })
   } catch (error) {
     console.error('[Goals] Error al completar objetivo:', error)
     res.status(500).json({ message: 'Error al marcar el objetivo como completado' })
@@ -252,20 +249,16 @@ export async function completeSubtask(req: Request, res: Response): Promise<void
       return
     }
 
-    // Actualizar subtarea y sumar XP en una transacción
-    const [updatedSubtask] = await prisma.$transaction([
-      prisma.subtask.update({
-        where: { id },
-        data: { status: 'COMPLETED', completedAt: new Date() },
-      }),
-      // 5 XP por cada micro-acción completada
-      prisma.user.update({
-        where: { id: userId },
-        data: { xp: { increment: 5 } },
-      }),
-    ])
+    // Actualizar subtarea
+    const updatedSubtask = await prisma.subtask.update({
+      where: { id },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    })
 
-    res.json(updatedSubtask)
+    // 5 XP por cada micro-acción completada
+    const { leveledUp, user } = await processGamification(userId, 5)
+
+    res.json({ ...updatedSubtask, leveledUp, xp: user.xp, level: user.level })
   } catch (error) {
     console.error('[Goals] Error al completar subtarea:', error)
     res.status(500).json({ message: 'Error al marcar el paso como completado' })

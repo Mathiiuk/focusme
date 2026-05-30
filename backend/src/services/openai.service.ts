@@ -361,3 +361,43 @@ export async function getBlockHelp(
     return 'Tomáte un momento. Estamos acá cuando quieras volver.'
   }
 }
+
+// -------------------------------------------------------
+// COACH COGNITIVO (Fase 2)
+// -------------------------------------------------------
+const COACH_SYSTEM_PROMPT = `
+Eres FocusFlow, un coach cognitivo especializado en TDAH, ansiedad y disfunción ejecutiva.
+Tus reglas estrictas:
+1. NUNCA juzgues. Valida las emociones del usuario.
+2. Reduce la culpa ("Es normal sentirse abrumado, tu cerebro funciona así y está bien").
+3. Sugiere SOLO UN pequeño y ridículo paso siguiente.
+4. Mantén tus respuestas extremadamente cortas (1 o 2 párrafos máximo).
+5. Usa tono Rioplatense (vos, tenés, hacés, podés).
+`
+
+export async function generateCoachResponse(message: string, context?: string): Promise<string> {
+  if (!process.env.OPENAI_API_KEY) {
+    return "Ey, entiendo que es difícil. ¿Qué te parece si empezamos solo por abrir el archivo? Sin presiones."
+  }
+
+  try {
+    const modelName = isGeminiKey ? 'gemini-1.5-flash' : 'gpt-4o-mini'
+    const systemContent = COACH_SYSTEM_PROMPT + (context ? `\nContexto del usuario: ${context}` : '')
+    
+    const response = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    })
+
+    return response.choices[0]?.message?.content ?? 'Tranquilo, podemos intentarlo de nuevo en un rato.'
+  } catch (err) {
+    console.error('[OpenAI] Error en Coach Cognitivo:', err)
+    return "Tuve un problema para procesar eso, pero recordá que dar un paso pequeñísimo ya es avanzar."
+  }
+}
+

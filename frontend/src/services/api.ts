@@ -50,6 +50,32 @@ async function apiFetch<T>(
 // -------------------------------------------------------
 // Servicios de autenticación
 // -------------------------------------------------------
+export interface UserProfile {
+  id: string
+  email: string
+  name?: string
+  level: number
+  xp: number
+  streakDays: number
+  graceDaysUsed: number
+  energyLogs: EnergyLog[]
+}
+
+export interface CompleteSubtaskResponse {
+  id: string
+  status: string
+  leveledUp?: boolean
+  xp?: number
+  level?: number
+}
+
+export interface DailyStat {
+  date: string
+  label: string
+  tasks: number
+  energy: number | null
+}
+
 export const authService = {
   /** Registrar usuario nuevo con email y contraseña */
   register: (payload: RegisterPayload) =>
@@ -102,7 +128,7 @@ export const goalService = {
 
   /** Marcar micro-acción como completada */
   completeSubtask: (subtaskId: string) =>
-    apiFetch<void>(`/subtasks/${subtaskId}/complete`, { method: 'PATCH' }),
+    apiFetch<CompleteSubtaskResponse>(`/subtasks/${subtaskId}/complete`, { method: 'PATCH' }),
 }
 
 // -------------------------------------------------------
@@ -111,7 +137,7 @@ export const goalService = {
 export const taskService = {
   /** Marcar subtarea como completada */
   completeSubtask: (subtaskId: string) =>
-    apiFetch<void>(`/subtasks/${subtaskId}/complete`, { method: 'PATCH' }),
+    apiFetch<CompleteSubtaskResponse>(`/subtasks/${subtaskId}/complete`, { method: 'PATCH' }),
 
   /** Obtener ayuda de la IA para una subtarea específica */
   getHelp: (subtaskId: string, reason: string) =>
@@ -138,6 +164,38 @@ export const blockService = {
       method: 'PATCH',
       body: JSON.stringify({ resolution }),
     }),
+}
+
+// -------------------------------------------------------
+// Servicios de usuario (Fase 2)
+// -------------------------------------------------------
+export const userService = {
+  /** Obtener el perfil del usuario actual (nivel, XP, logs de energía) */
+  getMe: () =>
+    apiFetch<UserProfile>('/users/me'),
+
+  /** Registrar el nivel de energía diario (1-5) */
+  logEnergy: (level: number) =>
+    apiFetch<EnergyLog>('/energy', { 
+      method: 'POST',
+      body: JSON.stringify({ level }) 
+    }),
+
+  /** Obtener estadísticas semanales */
+  getStats: () =>
+    apiFetch<DailyStat[]>('/stats'),
+}
+
+// -------------------------------------------------------
+// Servicios de Coach Cognitivo (Fase 2)
+// -------------------------------------------------------
+export const chatService = {
+  /** Enviar mensaje al coach y recibir respuesta */
+  sendMessage: (message: string) =>
+    apiFetch<{ reply: string }>('/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    })
 }
 
 // -------------------------------------------------------

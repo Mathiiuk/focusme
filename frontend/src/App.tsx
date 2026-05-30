@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores'
 // Importar páginas de forma lazy para reducir el bundle inicial
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'))
 const AdhdModePage = React.lazy(() => import('@/pages/AdhdModePage'))
+const ProgressPage = React.lazy(() => import('@/pages/ProgressPage'))
 const AuthPage = React.lazy(() => import('@/pages/AuthPage'))
 
 // -------------------------------------------------------
@@ -97,6 +98,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdhdModePage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Progreso — protegido */}
+            <Route
+              path="/progress"
+              element={
+                <ProtectedRoute>
+                  <ProgressPage />
                 </ProtectedRoute>
               }
             />

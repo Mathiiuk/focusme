@@ -5,9 +5,15 @@ import { ActionCard } from '@/components/features/dashboard/ActionCard'
 import { BlockDialog } from '@/components/features/dashboard/BlockDialog'
 import { useBlockDetection } from '@/hooks/useBlockDetection'
 import { useDashboardStore, useAdhdStore } from '@/stores'
-import { goalService } from '@/services/api'
-import type { Goal, BlockReason } from '@/types'
+import { goalService, userService } from '@/services/api'
+import type { Goal, BlockReason, UserProfile } from '@/types'
 import { useNavigate } from 'react-router-dom'
+import { EnergyCheckIn } from '@/components/features/dashboard/EnergyCheckIn'
+import { UserProgress } from '@/components/features/dashboard/UserProgress'
+import { LevelUpToast } from '@/components/features/dashboard/LevelUpToast'
+import { CognitiveCoach } from '@/components/features/dashboard/CognitiveCoach'
+import { BarChart2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 // -------------------------------------------------------
 // Página principal del Dashboard
@@ -25,6 +31,42 @@ const DashboardPage: React.FC = () => {
 
   // Estado local: diálogo de bloqueo
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+
+  // Estado local: perfil de usuario y check-in de energía (Fase 2)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [energyCheckInOpen, setEnergyCheckInOpen] = useState(false)
+  const [isLoggingEnergy, setIsLoggingEnergy] = useState(false)
+  
+  // Estado para la notificación de subida de nivel
+  const [levelUpData, setLevelUpData] = useState<{ isVisible: boolean; level: number }>({ isVisible: false, level: 1 })
+
+  // Cargar perfil de usuario al montar
+  React.useEffect(() => {
+    userService.getMe().then(user => {
+      setUserProfile(user)
+      // Comprobar si ya registró energía hoy
+      const today = new Date().toDateString()
+      const hasLoggedToday = user.energyLogs?.[0] && 
+        new Date(user.energyLogs[0].recordedAt).toDateString() === today
+      
+      if (!hasLoggedToday) {
+        setEnergyCheckInOpen(true)
+      }
+    }).catch(err => console.error('Error al cargar perfil:', err))
+  }, [])
+
+  // Manejar el submit de energía
+  const handleEnergySubmit = async (level: number) => {
+    setIsLoggingEnergy(true)
+    try {
+      await userService.logEnergy(level)
+      setEnergyCheckInOpen(false)
+    } catch (err) {
+      console.error('Error al registrar energía:', err)
+    } finally {
+      setIsLoggingEnergy(false)
+    }
+  }
 
   // Detectar inactividad — activo solo cuando hay un objetivo en curso
   useBlockDetection({
@@ -63,7 +105,7 @@ const DashboardPage: React.FC = () => {
 
     try {
       // Actualizar en el servidor
-      await goalService.completeSubtask(currentSubtask.id)
+      const response = await goalService.completeSubtask(currentSubtask.id)
 
       // Actualizar estado local optimistamente
       const updatedGoal: Goal = {
@@ -78,6 +120,17 @@ const DashboardPage: React.FC = () => {
         })),
       }
       setCurrentGoal(updatedGoal)
+
+      // Actualizar perfil de usuario si cambió el XP/Nivel
+      if (userProfile && response.xp !== undefined && response.level !== undefined) {
+        setUserProfile(prev => prev ? { ...prev, xp: response.xp!, level: response.level! } : null)
+        
+        // Mostrar notificación de nivel si corresponde
+        if (response.leveledUp) {
+          setLevelUpData({ isVisible: true, level: response.level })
+        }
+      }
+
     } catch (err) {
       console.error('Error al completar subtarea:', err)
     }
@@ -121,12 +174,26 @@ const DashboardPage: React.FC = () => {
     : null
 
   return (
-    <main
-      id="main-content"
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
-      style={{ background: 'var(--color-bg-primary)' }}
-    >
-      {/* Contenedor centrado con ancho máximo para legibilidad */}
+    <main className="min-h-screen bg-[var(--color-bg-primary)] p-4 md:p-8 flex flex-col items-center justify-center relative overflow-x-hidden">
+      
+      {/* Indicador de progreso del usuario (Gamificación) */}
+      {userProfile && (
+        <div className="w-full max-w-2xl">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Tu Perfil</h2>
+            <Button variant="outline" size="sm" onClick={() => navigate('/progress')} leftIcon={<BarChart2 size={16} />}>
+              Mi Progreso
+            </Button>
+          </div>
+          <UserProgress 
+            level={userProfile.level} 
+            xp={userProfile.xp} 
+            streakDays={userProfile.streakDays} 
+          />
+        </div>
+      )}
+
+      {/* Contenedor centralizado para la animación fluida */}
       <div className="w-full max-w-lg">
         <AnimatePresence mode="wait">
           {/* Estado vacío: mostrar el campo de entrada */}
@@ -185,6 +252,22 @@ const DashboardPage: React.FC = () => {
         onClose={() => setBlockDialogOpen(false)}
         onSelectReason={handleBlockReason}
       />
+
+      <EnergyCheckIn
+        isOpen={energyCheckInOpen}
+        onClose={() => setEnergyCheckInOpen(false)}
+        onSubmit={handleEnergySubmit}
+        isLoading={isLoggingEnergy}
+      />
+
+      <LevelUpToast 
+        isVisible={levelUpData.isVisible} 
+        level={levelUpData.level} 
+        onClose={() => setLevelUpData(prev => ({ ...prev, isVisible: false }))} 
+      />
+
+      {/* Coach Cognitivo Flotante */}
+      <CognitiveCoach />
     </main>
   )
 }

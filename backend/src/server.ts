@@ -18,6 +18,8 @@ import {
   completeSubtask,
 } from './controllers/goals.controller'
 import { createBlock, resolveBlock } from './controllers/blocks.controller'
+import { getMe, logEnergy, getStats } from './controllers/users.controller'
+import { chatWithCoach } from './controllers/chat.controller'
 import { authenticate } from './middleware/auth.middleware'
 
 // -------------------------------------------------------
@@ -131,6 +133,18 @@ app.patch('/api/v1/subtasks/:id/complete', authenticate, completeSubtask)
 // -------------------------------------------------------
 app.post('/api/v1/blocks', authenticate, createBlock)
 app.patch('/api/v1/blocks/:id/resolve', authenticate, resolveBlock)
+
+// -------------------------------------------------------
+// Rutas de Usuarios y Energía (Fase 2)
+// -------------------------------------------------------
+app.get('/api/v1/users/me', authenticate, getMe)
+app.post('/api/v1/energy', authenticate, logEnergy)
+app.get('/api/v1/stats', authenticate, getStats)
+
+// -------------------------------------------------------
+// Rutas de Chat Cognitivo (Fase 2)
+// -------------------------------------------------------
+app.post('/api/v1/chat', authenticate, chatWithCoach)
 
 // -------------------------------------------------------
 // Manejo de rutas no encontradas (404)
