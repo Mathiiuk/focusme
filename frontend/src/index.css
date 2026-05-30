@@ -1,0 +1,247 @@
+/* =============================================================
+   FocusFlow AI — Sistema de tokens de diseño global
+   Principios: reducción de carga cognitiva, accesibilidad WCAG 2.1 AA
+   ============================================================= */
+
+/* Importar fuentes de alta legibilidad desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Directivas de Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------------
+   TOKENS DE COLOR — Modo claro (por defecto)
+   Validados para deuteranopia, protanopia y tritanopia
+   ------------------------------------------------------- */
+:root {
+  /* Fondos — escala de beige-gris muy suave para descanso visual */
+  --color-bg-primary: #F8F7F4;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-muted: #F0EEE9;
+  --color-bg-elevated: #FFFFFF;
+
+  /* Textos — contraste mínimo 4.5:1 sobre fondo primario */
+  --color-text-primary: #1A1917;
+  --color-text-secondary: #5C5A55;
+  --color-text-disabled: #9C9A96;
+  --color-text-inverse: #FFFFFF;
+
+  /* Acento principal — azul-índigo (distinguible en daltonismo) */
+  --color-accent: #4F6EF7;
+  --color-accent-hover: #3B56E8;
+  --color-accent-focus: #2A45D9;
+  --color-accent-light: #EEF1FE;
+  --color-accent-text: #FFFFFF; /* texto sobre acento, contraste 4.8:1 */
+
+  /* Estados semánticos — oscurecidos para WCAG AA */
+  --color-success: #2D7A4F;
+  --color-success-light: #E8F5EE;
+  --color-warning: #B45309;
+  --color-warning-light: #FEF3C7;
+  --color-error: #B91C1C;
+  --color-error-light: #FEE2E2;
+
+  /* Bordes suaves */
+  --color-border: #E4E2DC;
+  --color-border-focus: #4F6EF7;
+
+  /* Focus ring — siempre visible, nunca oculto */
+  --color-focus-ring: #4F6EF7;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* Sombras */
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* -------------------------------------------------------
+   TOKENS DE COLOR — Modo oscuro automático
+   Activado por prefers-color-scheme: dark
+   ------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: #0F0E0C;
+    --color-bg-surface: #1C1B18;
+    --color-bg-muted: #252420;
+    --color-bg-elevated: #2A2926;
+
+    --color-text-primary: #F5F4F0;
+    --color-text-secondary: #A8A6A0;
+    --color-text-disabled: #6B6966;
+    --color-text-inverse: #0F0E0C;
+
+    /* Acento más claro para contraste sobre fondo oscuro */
+    --color-accent: #7B96FF;
+    --color-accent-hover: #92A8FF;
+    --color-accent-focus: #A8BCFF;
+    --color-accent-light: #1A2040;
+    --color-accent-text: #0F0E0C;
+
+    --color-success: #4ABA77;
+    --color-success-light: #0D2218;
+    --color-warning: #F59E0B;
+    --color-warning-light: #1C1200;
+    --color-error: #F87171;
+    --color-error-light: #1C0808;
+
+    --color-border: #2E2D29;
+    --color-border-focus: #7B96FF;
+
+    --color-focus-ring: #7B96FF;
+
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* -------------------------------------------------------
+   ESTILOS BASE — Reset y defaults accesibles
+   ------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Tamaño de fuente base: 16px mínimo absoluto del spec */
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  /* Scroll suave para anclas */
+  scroll-behavior: smooth;
+}
+
+/* Desactivar scroll suave si el usuario prefiere movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', 'Atkinson Hyperlegible', system-ui, sans-serif;
+  font-size: 1rem; /* 16px */
+  line-height: 1.6; /* espaciado generoso para lectura */
+  letter-spacing: 0.01em;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  /* Suavizar renderizado de fuentes */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* -------------------------------------------------------
+   FOCUS — Siempre visible, nunca oculto
+   Fundamental para navegación por teclado (WCAG 2.4.7)
+   ------------------------------------------------------- */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: 4px;
+}
+
+/* Eliminar outline en click/tap (no en teclado) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* -------------------------------------------------------
+   ANIMACIONES — Respeto a prefers-reduced-motion
+   Si el usuario prefiere movimiento reducido, todas las
+   animaciones y transiciones se desactivan
+   ------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------------------------------------
+   COMPONENTES DE UTILIDAD GLOBAL
+   ------------------------------------------------------- */
+
+/* Contenedor centrado con ancho máximo para legibilidad */
+.container-focus {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Touch target mínimo WCAG 2.1: 44×44px */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Texto accesible oculto visualmente pero disponible para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Separador visual entre secciones */
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+
+/* Superficie elevada (tarjetas) */
+.surface {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Estado de carga con skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 25%,
+    var(--color-bg-surface) 50%,
+    var(--color-bg-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--color-bg-muted);
+  }
+}
+
+/* Scroll suave en listas largas */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

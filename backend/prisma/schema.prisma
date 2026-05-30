@@ -1,0 +1,261 @@
+// Esquema de base de datos FocusFlow AI
+// Motor: PostgreSQL + Prisma ORM
+// Diseñado para expandirse en fases sin romper lo existente
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // La URL se lee de la variable de entorno DATABASE_URL
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------
+// MODELO: User
+// Tabla principal de usuarios
+// -------------------------------------------------------
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  // Nunca almacenar contraseñas en texto plano — siempre bcrypt
+  passwordHash  String
+  name          String?   // se completa en el onboarding
+  timezone      String    @default("America/Argentina/Buenos_Aires")
+  createdAt     DateTime  @default(now())
+  lastActiveAt  DateTime?
+
+  // Gamificación (activo desde Fase 3, inicializado aquí)
+  level         Int       @default(1)
+  xp            Int       @default(0)
+  streakDays    Int       @default(0)
+  // Día de gracia semanal: no pierde racha si no usó 1 día
+  graceDaysUsed Int       @default(0)
+
+  // Relaciones — un usuario tiene muchos de todo
+  goals           Goal[]
+  energyLogs      EnergyLog[]
+  sessions        Session[]
+  blockEvents     BlockEvent[]
+  aiConversations AiConversation[]
+  achievements    Achievement[]
+  userStats       UserStat[]
+  // Tokens de refresco para JWT rotation
+  refreshTokens   RefreshToken[]
+}
+
+// -------------------------------------------------------
+// MODELO: Goal
+// Un objetivo es lo que el usuario quiere lograr
+// La IA lo descompone en Tasks y Subtasks
+// -------------------------------------------------------
+model Goal {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String    // objetivo resumido por la IA
+  description   String?   // texto original del usuario
+  status        GoalStatus @default(ACTIVE)
+  // CLS: Cognitive Load Score (Fase 2)
+  clsScore      Int?
+  // Estimación Fibonacci (Fase 2)
+  fibonacciValue Int?
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  // Relaciones
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks         Task[]
+}
+
+// -------------------------------------------------------
+// MODELO: Task
+// Una tarea es una fase dentro del objetivo (máx 4 por objetivo)
+// -------------------------------------------------------
+model Task {
+  id            String    @id @default(cuid())
+  goalId        String
+  title         String
+  description   String?
+  status        TaskStatus @default(PENDING)
+  clsScore      Int?
+  fibonacciValue Int?
+  // Orden de presentación (la IA los ordena lógicamente)
+  order         Int
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  goal          Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  // Una Task tiene múltiples micro-acciones
+  subtasks      Subtask[]
+  blockEvents   BlockEvent[]
+  aiConversations AiConversation[]
+}
+
+// -------------------------------------------------------
+// MODELO: Subtask
+// Una micro-acción de 1 a 5 minutos — la unidad mínima de trabajo
+// Es lo que el usuario ve en pantalla en cada momento
+// -------------------------------------------------------
+model Subtask {
+  id              String    @id @default(cuid())
+  taskId          String
+  // Texto de la acción: específico, en segunda persona, sin ambigüedad
+  title           String
+  status          TaskStatus @default(PENDING)
+  // Estimación de tiempo para mostrar al usuario
+  durationMinutes Int?
+  // Orden de presentación dentro de la tarea
+  order           Int
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------
+// MODELO: EnergyLog
+// Registro del nivel de energía diario (1-5)
+// Usado en Fase 2 para filtrar qué tareas mostrar
+// -------------------------------------------------------
+model EnergyLog {
+  id          String    @id @default(cuid())
+  userId      String
+  // 1 = muy bajo, 5 = muy alto
+  level       Int
+  recordedAt  DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------
+// MODELO: Session
+// Registro de cada sesión de uso de la app
+// Usado para analíticas y cálculo de racha
+// -------------------------------------------------------
+model Session {
+  id              String    @id @default(cuid())
+  userId          String
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+  tasksCompleted  Int       @default(0)
+  xpEarned        Int       @default(0)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------
+// MODELO: BlockEvent
+// Registra cada vez que se detectó una inactividad/bloqueo
+// Crucial para análisis y mejora del sistema
+// -------------------------------------------------------
+model BlockEvent {
+  id              String    @id @default(cuid())
+  userId          String
+  taskId          String?   // null si el bloqueo fue sin tarea activa
+  reason          BlockReason
+  // Cuánto tiempo pasó bloqueado antes de buscar ayuda
+  durationMinutes Int?
+  // Cómo se resolvió (texto libre de la IA o del usuario)
+  resolution      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task            Task?     @relation(fields: [taskId], references: [id])
+}
+
+// -------------------------------------------------------
+// MODELO: AiConversation
+// Guarda el historial de conversaciones con la IA
+// Importante para contexto futuro y para el coach (Fase 2)
+// -------------------------------------------------------
+model AiConversation {
+  id        String    @id @default(cuid())
+  userId    String
+  taskId    String?
+  // Array de mensajes: [{ role: 'user'|'assistant', content: string, timestamp: string }]
+  messages  Json
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task?     @relation(fields: [taskId], references: [id])
+}
+
+// -------------------------------------------------------
+// MODELO: Achievement
+// Logros desbloqueados por el usuario (Fase 3)
+// -------------------------------------------------------
+model Achievement {
+  id        String    @id @default(cuid())
+  userId    String
+  // Tipo de logro: 'primer_paso', 'racha_7', 'objetivo_completado', etc.
+  type      String
+  earnedAt  DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------
+// MODELO: UserStat
+// Estadísticas semanales del usuario (Fase 3)
+// -------------------------------------------------------
+model UserStat {
+  id                  String    @id @default(cuid())
+  userId              String
+  // Inicio de la semana (siempre lunes a las 00:00 UTC)
+  week                DateTime
+  tasksCompleted      Int       @default(0)
+  goalsCompleted      Int       @default(0)
+  avgEnergy           Float?    // promedio de energía de la semana
+  totalFocusMinutes   Int       @default(0)
+  blocksDetected      Int       @default(0)
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Una stat por semana por usuario
+  @@unique([userId, week])
+}
+
+// -------------------------------------------------------
+// MODELO: RefreshToken
+// Para rotación de tokens JWT sin re-login
+// -------------------------------------------------------
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  // Token opaco, almacenado hasheado
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------
+
+/** Estado de un objetivo */
+enum GoalStatus {
+  ACTIVE      // en curso
+  COMPLETED   // terminado exitosamente
+  PAUSED      // pausado por el usuario
+  ARCHIVED    // archivado, no visible por defecto
+}
+
+/** Estado de una tarea o micro-acción */
+enum TaskStatus {
+  PENDING     // sin empezar
+  IN_PROGRESS // en progreso
+  COMPLETED   // completada
+  SKIPPED     // saltada intencionalmente
+}
+
+/** Razones de bloqueo del usuario */
+enum BlockReason {
+  DONT_KNOW_HOW_TO_START  // no sé cómo empezar
+  DONT_UNDERSTAND         // no entiendo la tarea
+  TOO_BIG                 // se siente muy grande
+  DISTRACTED              // me distraje
+}
