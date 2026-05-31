@@ -13,7 +13,6 @@ import LandingPage from '@/pages/LandingPage'
 
 // Importar páginas de forma lazy solo para las que no son críticas (o pesadas)
 const AdhdModePage = React.lazy(() => import('@/pages/AdhdModePage'))
-const AuthPage = React.lazy(() => import('@/pages/AuthPage'))
 
 // -------------------------------------------------------
 // Configuración de React Query

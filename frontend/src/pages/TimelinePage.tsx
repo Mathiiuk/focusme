@@ -22,12 +22,6 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; label: string; co
 const FILTERS = ['Todos', 'Activos', 'Completados'] as const
 type FilterType = typeof FILTERS[number]
 
-const filterToStatus: Record<FilterType, string | null> = {
-  'Todos': null,
-  'Activos': 'ACTIVE',
-  'Completados': 'COMPLETED',
-}
-
 // -------------------------------------------------------
 // TimelinePage: vista cronológica de todos los objetivos
 // -------------------------------------------------------
