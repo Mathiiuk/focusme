@@ -33,7 +33,7 @@ const app = express()
 // Solo acepta requests desde la URL del frontend
 // -------------------------------------------------------
 const allowedOrigins = [
-  process.env.CLIENT_URL,        // URL del frontend en producción (Vercel)
+  process.env.CLIENT_URL?.replace(/\/$/, ''), // URL del frontend en producción (eliminamos barra diagonal final si existe)
   'http://localhost:5173',       // Frontend en desarrollo (puerto por defecto)
   'http://127.0.0.1:5173',
   'http://localhost:5174',       // Soportar puerto secundario si el puerto por defecto está en uso por otra tarea
