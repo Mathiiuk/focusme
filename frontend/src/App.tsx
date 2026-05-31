@@ -9,6 +9,7 @@ import DashboardPage from '@/pages/DashboardPage'
 import ProgressPage from '@/pages/ProgressPage'
 import TimelinePage from '@/pages/TimelinePage'
 import ProfilePage from '@/pages/ProfilePage'
+import LandingPage from '@/pages/LandingPage'
 
 // Importar páginas de forma lazy solo para las que no son críticas (o pesadas)
 const AdhdModePage = React.lazy(() => import('@/pages/AdhdModePage'))
@@ -79,10 +80,14 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 // Componente raíz de la aplicación
 // -------------------------------------------------------
 function App() {
+  // Leemos el estado de autenticación de forma reactiva desde el store de Zustand.
+  // Si cambia, forzará el re-renderizado automático de las rutas.
+  const { isAuthenticated } = useAuthStore()
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        {/* Skip navigation link para teclado — accesibilidad WCAG 2.4.1 */}
+        {/* Enlace de salto de navegación para accesibilidad por teclado */}
         <a
           href="#main-content"
           className={[
@@ -96,24 +101,34 @@ function App() {
           Ir al contenido principal
         </a>
 
+        {/* Suspense maneja la carga perezosa de los bundles de las páginas hijas */}
         <React.Suspense fallback={<LoadingScreen />}>
           <Routes>
-            {/* Ruta de autenticación — accesible sin login */}
-            <Route path="/auth" element={<AuthPage />} />
+            {/* Si el usuario está autenticado, la raíz muestra el Dashboard. Si no, muestra la LandingPage */}
+            <Route 
+              path="/" 
+              element={
+                isAuthenticated 
+                  ? <ProtectedLayout><DashboardPage /></ProtectedLayout> 
+                  : <LandingPage />
+              } 
+            />
 
-            {/* Rutas protegidas con AppShell (header + nav) */}
-            <Route path="/" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
+            {/* Si el usuario intenta ir a /auth de forma manual, lo redirigimos a la raíz (que mostrará la landing o el dashboard según corresponda) */}
+            <Route path="/auth" element={<Navigate to="/" replace />} />
+
+            {/* Rutas protegidas para el resto de páginas de la aplicación */}
             <Route path="/focus" element={<ProtectedLayout><AdhdModePage /></ProtectedLayout>} />
             <Route path="/progress" element={<ProtectedLayout><ProgressPage /></ProtectedLayout>} />
             <Route path="/timeline" element={<ProtectedLayout><TimelinePage /></ProtectedLayout>} />
             <Route path="/profile" element={<ProtectedLayout><ProfilePage /></ProtectedLayout>} />
 
-            {/* Cualquier ruta no encontrada redirige al inicio */}
+            {/* Cualquier ruta que no coincida con las anteriores se redirige a la raíz de forma segura */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </React.Suspense>
         
-        {/* PWA Update Prompt */}
+        {/* Notificador de actualización PWA para cargas sin conexión */}
         <ReloadPrompt />
       </BrowserRouter>
     </QueryClientProvider>

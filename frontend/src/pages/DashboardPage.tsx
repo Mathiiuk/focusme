@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { Trophy, Award } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { GoalInput } from '@/components/features/dashboard/GoalInput'
 import { ActionCard } from '@/components/features/dashboard/ActionCard'
@@ -99,21 +100,34 @@ const DashboardPage: React.FC = () => {
   // Manejar "Listo" — marcar subtarea actual como completada
   // -------------------------------------------------------
   const handleDone = useCallback(async () => {
+    // Si no hay un objetivo activo en el store, no hacemos nada
     if (!currentGoal) return
 
-    // Encontrar la primera subtarea pendiente
+    // Encontrar la primera subtarea que aún está pendiente de realizar
     const currentSubtask = currentGoal.tasks
       .flatMap((t) => t.subtasks)
       .find((s) => s.status === 'PENDING')
 
+    // Si no quedan subtareas pendientes, salimos del flujo
     if (!currentSubtask) return
 
-    // --- OPTIMISTIC UPDATE ---
-    // Actualizar UI inmediatamente para que el usuario sienta que la acción fue instantánea.
-    // La llamada al servidor ocurre en background. Si falla, revertimos silenciosamente.
-    const previousGoal = currentGoal // Guardar snapshot para poder revertir
+    // --- ACTUALIZACIÓN OPTIMISTA (OPTIMISTIC UPDATE) ---
+    // Guardamos el estado anterior del objetivo para poder revertirlo en caso de que la petición al servidor falle
+    const previousGoal = currentGoal 
+
+    // Obtener todas las subtareas para verificar si este es el paso final del objetivo completo
+    const allSubtasks = currentGoal.tasks.flatMap((t) => t.subtasks)
+    // Filtramos las subtareas que siguen pendientes
+    const pendingSubtasks = allSubtasks.filter((s) => s.status === 'PENDING')
+    // Comprobamos si es la última subtarea pendiente del objetivo (conteo igual a 1 y es la actual)
+    const isLastSubtask = pendingSubtasks.length === 1 && pendingSubtasks[0].id === currentSubtask.id
+
+    // Crear el nuevo objeto de objetivo con el estado actualizado de forma optimista
     const updatedGoal: Goal = {
       ...currentGoal,
+      // Si es el último paso, marcamos de inmediato el objetivo como COMPLETADO en el frontend
+      status: isLastSubtask ? ('COMPLETED' as const) : currentGoal.status,
+      completedAt: isLastSubtask ? new Date().toISOString() : currentGoal.completedAt,
       tasks: currentGoal.tasks.map((task) => ({
         ...task,
         subtasks: task.subtasks.map((sub) =>
@@ -123,22 +137,23 @@ const DashboardPage: React.FC = () => {
         ),
       })),
     }
+    // Seteamos el estado local del objetivo de inmediato para que la interfaz responda al instante
     setCurrentGoal(updatedGoal)
 
     try {
-      // Ahora sí confirmar con el servidor en background
+      // Realizar la llamada de red en segundo plano para persistir los cambios en la base de datos
       const response = await goalService.completeSubtask(currentSubtask.id)
 
-      // Actualizar perfil de usuario si cambió el XP/Nivel
+      // Si el backend responde indicando cambios en XP y nivel, actualizamos el perfil local del usuario
       if (userProfile && response.xp !== undefined && response.level !== undefined) {
         setUserProfile(prev => prev ? { ...prev, xp: response.xp!, level: response.level! } : null)
         
-        // Mostrar notificación de nivel si corresponde
+        // Si el usuario subió de nivel, mostramos la felicitación correspondiente
         if (response.leveledUp) {
           setLevelUpData({ isVisible: true, level: response.level })
         }
 
-        // Mostrar notificación de logros
+        // Si se desbloquearon nuevos logros, los mostramos mediante la notificación emergente
         if (response.newAchievements && response.newAchievements.length > 0) {
           const first = response.newAchievements[0]
           setAchievementToastData({
@@ -151,11 +166,11 @@ const DashboardPage: React.FC = () => {
       }
 
     } catch (err) {
-      // Si falla, revertir silenciosamente al estado anterior sin alarmar
+      // Si la petición al servidor falla, revertimos el estado local silenciosamente sin frustrar al usuario
       console.error('Error al completar subtarea:', err)
       setCurrentGoal(previousGoal)
     }
-  }, [currentGoal, setCurrentGoal])
+  }, [currentGoal, setCurrentGoal, userProfile])
 
   // -------------------------------------------------------
   // Activar modo TDAH con las subtareas actuales
@@ -226,8 +241,66 @@ const DashboardPage: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Estado activo: mostrar la tarjeta de acción */}
-          {state === 'active' && currentGoal && (
+          {/* Estado activo y objetivo completado: renderizar hermosa vista de celebración premium */}
+          {state === 'active' && currentGoal && currentGoal.status === 'COMPLETED' && (
+            <motion.div
+              key="celebration"
+              // Usar animaciones fluidas con Framer Motion si no se prefiere reducción de movimiento
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="surface p-8 text-center flex flex-col items-center justify-center border border-[var(--color-success)] shadow-[0_0_20px_rgba(34,197,94,0.15)] rounded-2xl relative overflow-hidden"
+            >
+              {/* Gradiente sutil decorativo de fondo */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[rgba(34,197,94,0.05)] to-transparent pointer-events-none" />
+
+              {/* Contenedor del ícono de trofeo con animación divertida */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                className="w-16 h-16 rounded-full bg-[rgba(34,197,94,0.1)] flex items-center justify-center mb-6 border border-[rgba(34,197,94,0.2)] text-[var(--color-success)]"
+              >
+                <Trophy size={32} className="animate-bounce" />
+              </motion.div>
+
+              {/* Título de éxito principal */}
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">
+                ¡Objetivo Completado!
+              </h2>
+
+              {/* Título descriptivo del objetivo completado */}
+              <p className="text-base font-semibold text-[var(--color-text-secondary)] mb-6 max-w-sm">
+                "{currentGoal.title}"
+              </p>
+
+              {/* Detalle visual de la recompensa de XP obtenida */}
+              <div className="bg-[var(--color-bg-muted)] border border-[var(--color-border)] rounded-xl py-3 px-6 mb-8 flex items-center gap-3">
+                <Award className="text-[var(--color-success)]" size={20} />
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  Recompensa obtenida: <strong className="text-[var(--color-success)]">+100 XP</strong>
+                </span>
+              </div>
+
+              {/* Mensaje de motivación e incentivo para mantener la racha */}
+              <p className="text-sm text-[var(--color-text-disabled)] mb-8 max-w-xs">
+                ¡Excelente trabajo! Has completado todas las micro-acciones propuestas. Mantén este ritmo para seguir progresando.
+              </p>
+
+              {/* Botón principal para volver al estado inicial y establecer otro objetivo */}
+              <button
+                id="celebration-reset-btn"
+                onClick={reset}
+                className="w-full py-3.5 bg-[var(--color-accent)] hover:bg-[var(--color-accent-dark)] text-white font-medium rounded-xl transition-colors shadow-lg hover:shadow-xl focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--color-focus-ring)]"
+              >
+                Establecer nuevo objetivo
+              </button>
+            </motion.div>
+          )}
+
+          {/* Estado activo y objetivo en progreso: mostrar la tarjeta de acción estándar con la subtarea actual */}
+          {state === 'active' && currentGoal && currentGoal.status !== 'COMPLETED' && (
             <motion.div
               key="action"
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
@@ -243,7 +316,7 @@ const DashboardPage: React.FC = () => {
                 onEnterAdhdMode={handleEnterAdhdMode}
               />
 
-              {/* Botón para empezar de nuevo */}
+              {/* Botón secundario para empezar con un objetivo completamente diferente */}
               <button
                 id="start-over-btn"
                 onClick={reset}

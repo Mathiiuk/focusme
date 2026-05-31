@@ -32,27 +32,52 @@ const filterToStatus: Record<FilterType, string | null> = {
 // TimelinePage: vista cronológica de todos los objetivos
 // -------------------------------------------------------
 const TimelinePage: React.FC = () => {
+  // Estado local para almacenar el filtro seleccionado en la pestaña de navegación
   const [activeFilter, setActiveFilter] = useState<FilterType>('Todos')
 
-  // Usar React Query para cachear los objetivos y que la navegación sea instantánea
+  // Obtener la lista de todos los objetivos del usuario desde el servidor utilizando React Query
   const { data: goals = [], isLoading: loading } = useQuery({
     queryKey: ['goals'],
     queryFn: () => goalService.getAll(),
   })
 
-  // Filtrar objetivos según el filtro activo
-  const filteredGoals = goals.filter(g => {
-    const statusFilter = filterToStatus[activeFilter]
-    return statusFilter ? g.status === statusFilter : true
-  })
-
   // Calcular progreso de un objetivo (subtareas completadas / total)
+  // Devuelve la cantidad de pasos completados y el total de pasos del objetivo
   const getProgress = (goal: Goal) => {
+    // Aplanamos todas las subtareas asociadas a las tareas del objetivo
     const allSubtasks = goal.tasks?.flatMap(t => t.subtasks) ?? []
+    // Filtramos para contar las subtareas que tienen estado completado
     const completed = allSubtasks.filter(s => s.status === 'COMPLETED').length
+    // Retornamos el conteo de completadas y el total de subtareas
     return { completed, total: allSubtasks.length }
   }
 
+  // Determinar si un objetivo está completado por completo
+  // Un objetivo está completado si su estado en DB es COMPLETED, o si tiene al menos una tarea y todos sus pasos están completados
+  const isGoalCompleted = (goal: Goal) => {
+    // Si el estado en la base de datos ya es COMPLETED, se considera completado
+    if (goal.status === 'COMPLETED') return true
+    // Si no, verificamos el progreso en tiempo real de sus subtareas
+    const { completed, total } = getProgress(goal)
+    // Se considera completado si hay pasos totales y todos están listos
+    return total > 0 && completed === total
+  }
+
+  // Filtrar objetivos según el filtro activo de forma inteligente y TDAH-friendly
+  const filteredGoals = goals.filter(g => {
+    if (activeFilter === 'Activos') {
+      // Excluir cualquier objetivo que esté completado (estado o 100% de progreso) de la pestaña de activos
+      return !isGoalCompleted(g)
+    }
+    if (activeFilter === 'Completados') {
+      // Incluir solo objetivos completados (estado o 100% de progreso) en la pestaña de completados
+      return isGoalCompleted(g)
+    }
+    // "Todos" muestra la lista completa de objetivos sin restricciones
+    return true
+  })
+
+  // Si los datos aún se están cargando, mostrar una pantalla limpia con un mensaje amigable
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -63,7 +88,7 @@ const TimelinePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Header de la página */}
+      {/* Header de la página con título y descripción */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Mis Objetivos</h1>
         <p className="text-sm text-[var(--color-text-secondary)] mt-1">
@@ -71,7 +96,7 @@ const TimelinePage: React.FC = () => {
         </p>
       </div>
 
-      {/* Filtros */}
+      {/* Selector de filtros de pestañas */}
       <div className="flex items-center gap-2 mb-6" role="tablist" aria-label="Filtrar objetivos">
         <Filter size={16} className="text-[var(--color-text-disabled)]" aria-hidden="true" />
         {FILTERS.map(filter => (
@@ -91,7 +116,7 @@ const TimelinePage: React.FC = () => {
         ))}
       </div>
 
-      {/* Lista de objetivos o estado vacío */}
+      {/* Lista de tarjetas de objetivos filtrados o vista de estado vacío */}
       {filteredGoals.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-4xl mb-4" aria-hidden="true">🌱</p>
@@ -103,18 +128,24 @@ const TimelinePage: React.FC = () => {
         </div>
       ) : (
         <div className="relative">
-          {/* Línea vertical del timeline */}
+          {/* Línea vertical decorativa del timeline */}
           <div
             className="absolute left-4 top-0 bottom-0 w-0.5 bg-[var(--color-border)]"
             aria-hidden="true"
           />
 
-          {/* Tarjetas de objetivos */}
+          {/* Renderizado de las tarjetas con animación de Framer Motion */}
           <AnimatePresence>
             {filteredGoals.map((goal, index) => {
+              // Calcular el progreso de pasos y el porcentaje para este objetivo
               const { completed, total } = getProgress(goal)
+              // Porcentaje de progreso del objetivo
               const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0
-              const config = STATUS_CONFIG[goal.status] ?? STATUS_CONFIG.ACTIVE
+              // Comprobar si el objetivo está completado
+              const completedFlag = isGoalCompleted(goal)
+              // Usar configuración de estilo completado (verde) si está completo, o la correspondiente a su estado actual
+              const config = completedFlag ? STATUS_CONFIG.COMPLETED : (STATUS_CONFIG[goal.status] ?? STATUS_CONFIG.ACTIVE)
+              // Icono correspondiente al estado
               const StatusIcon = config.icon
 
               return (
@@ -126,10 +157,10 @@ const TimelinePage: React.FC = () => {
                   transition={{ delay: index * 0.05 }}
                   className="relative pl-10 pb-8 last:pb-0"
                 >
-                  {/* Punto en la línea del timeline */}
+                  {/* Punto en la línea del timeline: verde si está completado, azul de lo contrario */}
                   <div
                     className={`absolute left-2.5 top-1 w-3.5 h-3.5 rounded-full border-2 border-[var(--color-bg-surface)] ${
-                      goal.status === 'COMPLETED' ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'
+                      completedFlag ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'
                     }`}
                     aria-hidden="true"
                   />
@@ -154,7 +185,7 @@ const TimelinePage: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Barra de progreso */}
+                    {/* Barra de progreso del objetivo */}
                     {total > 0 && (
                       <div className="mb-3">
                         <div className="flex justify-between text-xs text-[var(--color-text-secondary)] mb-1">
@@ -171,7 +202,7 @@ const TimelinePage: React.FC = () => {
                         >
                           <motion.div
                             className={`h-full rounded-full ${
-                              goal.status === 'COMPLETED' ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'
+                              completedFlag ? 'bg-[var(--color-success)]' : 'bg-[var(--color-accent)]'
                             }`}
                             initial={{ width: 0 }}
                             animate={{ width: `${progressPercent}%` }}
@@ -181,10 +212,10 @@ const TimelinePage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Fecha */}
+                    {/* Fecha de creación o completado */}
                     <p className="text-xs text-[var(--color-text-disabled)]">
-                      {goal.completedAt
-                        ? `Completado el ${new Date(goal.completedAt).toLocaleDateString('es-AR')}`
+                      {goal.completedAt || completedFlag
+                        ? `Completado el ${new Date(goal.completedAt || new Date()).toLocaleDateString('es-AR')}`
                         : `Creado el ${new Date(goal.createdAt).toLocaleDateString('es-AR')}`}
                     </p>
                   </article>

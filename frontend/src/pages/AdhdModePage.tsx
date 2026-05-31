@@ -2,6 +2,7 @@ import React, { useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAdhdStore, useAppConfigStore } from '@/stores'
+import { goalService } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Volume2, VolumeX, ArrowLeft } from 'lucide-react'
 import { Icon } from '@/components/ui/Icon'
@@ -124,24 +125,36 @@ const AdhdModePage: React.FC = () => {
   // -------------------------------------------------------
   // Manejar completar el paso actual
   // -------------------------------------------------------
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
     if (!adhdState) return
 
-    // Mostrar celebración brevemente
+    // Obtener la subtarea que se va a completar en base al índice actual
+    const currentSubtask = adhdState.subtasks[adhdState.currentSubtaskIndex]
+    if (!currentSubtask) return
+
+    // Mostrar celebración brevemente en la UI local (actualización optimista)
     completeCurrentSubtask()
     
-    // Feedback táctil (Problema 3)
+    // Feedback táctil para que el usuario sienta la vibración (TDAH-friendly)
     if (navigator.vibrate) {
       navigator.vibrate([10, 50, 10])
     }
 
-    // Ocultar celebración después de 600ms exactos (según spec del prompt)
+    // Disparar la llamada de red en segundo plano para notificar al servidor y persistir en la DB
+    try {
+      await goalService.completeSubtask(currentSubtask.id)
+    } catch (err) {
+      // Registrar el error en consola si falla la persistencia, pero mantener la fluidez en el frontend
+      console.error('Error al guardar el progreso en el backend:', err)
+    }
+
+    // Ocultar la celebración después de 500ms exactos (según especificación del prompt)
     setTimeout(() => {
       setShowCelebration(false)
-      // Verificar si era el último paso
+      // Verificar si este paso era el último de la lista de enfoque
       const nextIndex = adhdState.currentSubtaskIndex + 1
       if (nextIndex >= adhdState.subtasks.length) {
-        // Todos los pasos completados: volver al dashboard
+        // Si todos los pasos fueron completados, desactivar el modo TDAH y volver al dashboard
         deactivate()
         navigate('/')
       }

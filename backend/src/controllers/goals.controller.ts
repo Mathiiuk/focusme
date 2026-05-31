@@ -223,43 +223,78 @@ export async function completeGoal(req: Request, res: Response): Promise<void> {
 
 // -------------------------------------------------------
 // PATCH /api/v1/subtasks/:id/complete
-// Marcar micro-acción como completada y otorgar 5 XP
+// Marcar micro-acción como completada y otorgar 5 XP (y 100 XP extra si completa el objetivo)
 // -------------------------------------------------------
 export async function completeSubtask(req: Request, res: Response): Promise<void> {
+  // Obtener el ID del usuario autenticado
   const userId = req.user?.id
+  // Obtener el ID de la subtarea desde los parámetros de la solicitud
   const id = getParam(req, 'id')
 
+  // Si no hay un usuario autenticado, responder con no autorizado (401)
   if (!userId) { res.status(401).json({ message: 'No autorizado' }); return }
 
   try {
-    // Verificar que la subtarea pertenece al usuario a través de las relaciones
+    // Buscar la subtarea por su ID en la base de datos, incluyendo la tarea padre y el objetivo para verificar la propiedad del usuario
     const subtask = await prisma.subtask.findFirst({
       where: { id },
       include: {
         task: {
-          // Solo traer el userId del goal para verificar propiedad
-          include: { goal: { select: { userId: true } } },
+          // Incluir el objetivo con su ID y el ID del usuario para verificar la propiedad y actualizar el objetivo principal si se completa
+          include: { goal: { select: { id: true, userId: true } } },
         },
       },
     })
 
-    // Verificar propiedad: subtarea → tarea → objetivo debe pertenecer al usuario
+    // Verificar si la subtarea existe y si el objetivo asociado pertenece al usuario autenticado
     if (!subtask || subtask.task.goal.userId !== userId) {
       res.status(404).json({ message: 'Paso no encontrado' })
       return
     }
 
-    // Actualizar subtarea
+    // Actualizar el estado de la subtarea a COMPLETADA y establecer la fecha de completado
     const updatedSubtask = await prisma.subtask.update({
       where: { id },
       data: { status: 'COMPLETED', completedAt: new Date() },
     })
 
-    // 5 XP por cada micro-acción completada
-    const { leveledUp, user } = await processGamification(userId, 5)
+    // Contar cuántas subtareas del mismo objetivo siguen pendientes (sin estar completadas o saltadas)
+    // Excluimos la subtarea que acabamos de completar en esta petición
+    const pendingSubtasksCount = await prisma.subtask.count({
+      where: {
+        task: { goalId: subtask.task.goalId },
+        id: { not: id },
+        status: { notIn: ['COMPLETED', 'SKIPPED'] },
+      },
+    })
 
-    res.json({ ...updatedSubtask, leveledUp, xp: user.xp, level: user.level })
+    // Determinar si el objetivo se ha completado por completo (si no quedan subtareas pendientes)
+    const isGoalCompleted = pendingSubtasksCount === 0
+
+    if (isGoalCompleted) {
+      // Si se completó el objetivo, actualizar su estado en la base de datos a COMPLETADO y establecer la fecha de completado
+      await prisma.goal.update({
+        where: { id: subtask.task.goalId },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      })
+    }
+
+    // Calcular la recompensa de XP: 5 XP por la subtarea, y 100 XP adicionales si se completó el objetivo principal (total 105 XP)
+    const xpReward = isGoalCompleted ? 105 : 5
+    // Procesar la gamificación del usuario para sumarle la XP, actualizar la racha y comprobar logros
+    const { leveledUp, user, newAchievements } = await processGamification(userId, xpReward)
+
+    // Responder con los datos de la subtarea completada, indicando si el objetivo se completó, nivel actualizado, XP y logros desbloqueados
+    res.json({ 
+      ...updatedSubtask, 
+      goalCompleted: isGoalCompleted, 
+      leveledUp, 
+      xp: user.xp, 
+      level: user.level,
+      newAchievements 
+    })
   } catch (error) {
+    // Si ocurre un error, registrarlo en la consola y responder con código 500
     console.error('[Goals] Error al completar subtarea:', error)
     res.status(500).json({ message: 'Error al marcar el paso como completado' })
   }

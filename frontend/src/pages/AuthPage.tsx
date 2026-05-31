@@ -29,11 +29,18 @@ const TIMEZONES = [
 ]
 
 // -------------------------------------------------------
+// Interfaz para definir las propiedades de AuthPageContent
+// -------------------------------------------------------
+interface AuthPageContentProps {
+  embed?: boolean // Propiedad opcional para indicar si el formulario está embebido en otra página (como la Landing Page)
+}
+
+// -------------------------------------------------------
 // Página de autenticación (Contenido)
 // Tres vistas: login → register → onboarding
 // El onboarding solo pregunta nombre y zona horaria
 // -------------------------------------------------------
-const AuthPageContent: React.FC = () => {
+const AuthPageContent: React.FC<AuthPageContentProps> = ({ embed = false }) => {
   const navigate = useNavigate()
   const shouldReduceMotion = useReducedMotion()
   const { setAuth, updateUser } = useAuthStore()
@@ -145,26 +152,30 @@ const AuthPageContent: React.FC = () => {
   return (
     <main
       id="auth-main"
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
-      style={{ background: 'var(--color-bg-primary)' }}
+      // Si está embebido, eliminamos márgenes y padding para que se ajuste perfectamente; si no, ocupa toda la pantalla
+      className={`flex flex-col items-center justify-center ${embed ? 'px-0 py-0 w-full' : 'min-h-screen px-4 py-12'}`}
+      // Si está embebido, el fondo es transparente para fusionarse con el contenedor de la Landing Page; si no, usa el color de fondo estándar
+      style={{ background: embed ? 'transparent' : 'var(--color-bg-primary)' }}
     >
       <div className="w-full max-w-sm">
-        {/* Logo y nombre */}
-        <div className="text-center mb-8">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-            style={{ background: 'var(--color-accent)' }}
-            aria-hidden="true"
-          >
-            <Sparkles size={22} color="white" />
+        {/* Logo y nombre: se ocultan si se embebe en la Landing Page para ahorrar espacio vertical */}
+        {!embed && (
+          <div className="text-center mb-8">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+              style={{ background: 'var(--color-accent)' }}
+              aria-hidden="true"
+            >
+              <Sparkles size={22} color="white" />
+            </div>
+            <h1 className="text-[26px] font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              FocusFlow
+            </h1>
+            <p className="text-[15px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+              Tu GPS cognitivo personal
+            </p>
           </div>
-          <h1 className="text-[26px] font-bold" style={{ color: 'var(--color-text-primary)' }}>
-            FocusFlow
-          </h1>
-          <p className="text-[15px] mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            Tu GPS cognitivo personal
-          </p>
-        </div>
+        )}
 
         <AnimatePresence mode="wait">
           {/* ---- Vista: Login ---- */}
@@ -176,7 +187,8 @@ const AuthPageContent: React.FC = () => {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="surface p-6">
+              {/* Si está embebido, agregamos una sombra premium para que actúe como tarjeta única y eliminamos sombras duplicadas */}
+              <div className={`surface ${embed ? 'p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-md' : 'p-6'}`}>
                 <h2 className="text-[18px] font-semibold mb-5" style={{ color: 'var(--color-text-primary)' }}>
                   Bienvenido de vuelta
                 </h2>
@@ -263,7 +275,8 @@ const AuthPageContent: React.FC = () => {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="surface p-6">
+              {/* Ajustar el padding y sombra en el registro si está embebido para usar sombra premium de tarjeta única */}
+              <div className={`surface ${embed ? 'p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-md' : 'p-6'}`}>
                 <h2 className="text-[18px] font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>
                   Crear cuenta
                 </h2>
@@ -351,7 +364,8 @@ const AuthPageContent: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
             >
-              <div className="surface p-6">
+              {/* Ajustar el padding y sombra en el onboarding si está embebido para usar sombra premium de tarjeta única */}
+              <div className={`surface ${embed ? 'p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-md' : 'p-6'}`}>
                 <h2 className="text-[18px] font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
                   Casi listo 🎉
                 </h2>
@@ -436,11 +450,15 @@ const AuthPageContent: React.FC = () => {
 // Wrapper de Autenticación
 // Solo cargamos Google Auth y reCAPTCHA en esta ruta para optimizar rendimiento
 // -------------------------------------------------------
-const AuthPage: React.FC = () => {
+interface AuthPageProps {
+  embed?: boolean // Propiedad opcional para soportar el renderizado embebido
+}
+
+const AuthPage: React.FC<AuthPageProps> = ({ embed = false }) => {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
       <GoogleReCaptchaProvider reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''}>
-        <AuthPageContent />
+        <AuthPageContent embed={embed} />
       </GoogleReCaptchaProvider>
     </GoogleOAuthProvider>
   )
