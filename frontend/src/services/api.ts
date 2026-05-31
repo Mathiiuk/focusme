@@ -15,8 +15,8 @@ import type {
   EnergyLog,
 } from '@/types'
 
-// URL base de la API: en desarrollo usa el proxy de Vite, en producción usa la variable de entorno
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
+// URL base de la API: en desarrollo usa el proxy de Vite, en producción usa la variable de entorno (ahora simplificada sin v1)
+const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 // -------------------------------------------------------
 // Función auxiliar para hacer fetch con manejo de errores

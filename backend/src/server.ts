@@ -113,46 +113,46 @@ app.get('/health', (_req, res) => {
 })
 
 // -------------------------------------------------------
-// Rutas de autenticación (v1)
+// Rutas de autenticación (simplificadas sin v1)
 // -------------------------------------------------------
-app.post('/api/v1/auth/register', authLimiter, register)
-app.post('/api/v1/auth/login', authLimiter, login)
-app.post('/api/v1/auth/google', authLimiter, googleAuth)
-app.post('/api/v1/auth/logout', logout)
-app.patch('/api/v1/auth/onboarding', authenticate, completeOnboarding)
+app.post('/api/auth/register', authLimiter, register)
+app.post('/api/auth/login', authLimiter, login)
+app.post('/api/auth/google', authLimiter, googleAuth)
+app.post('/api/auth/logout', logout)
+app.patch('/api/auth/onboarding', authenticate, completeOnboarding)
 
 // -------------------------------------------------------
-// Rutas de objetivos y subtareas (v1) — todas protegidas
+// Rutas de objetivos y subtareas (simplificadas sin v1) — todas protegidas
 // -------------------------------------------------------
-app.post('/api/v1/goals', authenticate, aiLimiter, createGoal)
-app.get('/api/v1/goals', authenticate, getGoals)
-app.get('/api/v1/goals/:id', authenticate, getGoalById)
-app.patch('/api/v1/goals/:id/complete', authenticate, completeGoal)
-app.patch('/api/v1/subtasks/:id/complete', authenticate, completeSubtask)
+app.post('/api/goals', authenticate, aiLimiter, createGoal)
+app.get('/api/goals', authenticate, getGoals)
+app.get('/api/goals/:id', authenticate, getGoalById)
+app.patch('/api/goals/:id/complete', authenticate, completeGoal)
+app.patch('/api/subtasks/:id/complete', authenticate, completeSubtask)
 
 // -------------------------------------------------------
-// Rutas de bloqueos (v1) — todas protegidas
+// Rutas de bloqueos (simplificadas sin v1) — todas protegidas
 // -------------------------------------------------------
-app.post('/api/v1/blocks', authenticate, createBlock)
-app.patch('/api/v1/blocks/:id/resolve', authenticate, resolveBlock)
+app.post('/api/blocks', authenticate, createBlock)
+app.patch('/api/blocks/:id/resolve', authenticate, resolveBlock)
 
 // -------------------------------------------------------
-// Rutas de Usuarios y Energía (Fase 2)
+// Rutas de Usuarios y Energía (Fase 2 - simplificadas)
 // -------------------------------------------------------
-app.get('/api/v1/users/me', authenticate, getMe)
-app.post('/api/v1/energy', authenticate, logEnergy)
-app.get('/api/v1/stats', authenticate, getStats)
+app.get('/api/users/me', authenticate, getMe)
+app.post('/api/energy', authenticate, logEnergy)
+app.get('/api/stats', authenticate, getStats)
 
 // -------------------------------------------------------
-// Rutas de Chat Cognitivo (Fase 2)
+// Rutas de Chat Cognitivo (Fase 2 - simplificadas)
 // -------------------------------------------------------
-app.post('/api/v1/chat', authenticate, chatWithCoach)
+app.post('/api/chat', authenticate, chatWithCoach)
 
 // -------------------------------------------------------
-// Rutas de Perfil (Fase 3)
+// Rutas de Perfil (Fase 3 - simplificadas)
 // -------------------------------------------------------
-app.get('/api/v1/profile', authenticate, getProfile)
-app.patch('/api/v1/profile', authenticate, updateProfile)
+app.get('/api/profile', authenticate, getProfile)
+app.patch('/api/profile', authenticate, updateProfile)
 
 // -------------------------------------------------------
 // Manejo de rutas no encontradas (404)
