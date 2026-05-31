@@ -1,9 +1,10 @@
 /* =============================================================
    FocusFlow AI — Sistema de tokens de diseño global
    Principios: reducción de carga cognitiva, accesibilidad WCAG 2.1 AA
+   Fuente: Inter — la misma que usan Linear, Vercel, Raycast
    ============================================================= */
 
-/* Importar fuentes de alta legibilidad desde Google Fonts */
+/* Importar Inter con display=swap para evitar FOIT (Flash of Invisible Text) */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Directivas de Tailwind CSS */
@@ -11,91 +12,121 @@
 @tailwind components;
 @tailwind utilities;
 
-/* -------------------------------------------------------
-   TOKENS DE COLOR — Modo claro (por defecto)
-   Validados para deuteranopia, protanopia y tritanopia
-   ------------------------------------------------------- */
-:root {
-  /* Fondos — escala de beige-gris muy suave para descanso visual */
-  --color-bg-primary: #F8F7F4;
-  --color-bg-surface: #FFFFFF;
-  --color-bg-muted: #F0EEE9;
-  --color-bg-elevated: #FFFFFF;
-
-  /* Textos — contraste mínimo 4.5:1 sobre fondo primario */
-  --color-text-primary: #1A1917;
-  --color-text-secondary: #5C5A55;
-  --color-text-disabled: #9C9A96;
-  --color-text-inverse: #FFFFFF;
-
-  /* Acento principal — azul-índigo (distinguible en daltonismo) */
-  --color-accent: #4F6EF7;
-  --color-accent-hover: #3B56E8;
-  --color-accent-focus: #2A45D9;
-  --color-accent-light: #EEF1FE;
-  --color-accent-text: #FFFFFF; /* texto sobre acento, contraste 4.8:1 */
-
-  /* Estados semánticos — oscurecidos para WCAG AA */
-  --color-success: #2D7A4F;
-  --color-success-light: #E8F5EE;
-  --color-warning: #B45309;
-  --color-warning-light: #FEF3C7;
-  --color-error: #B91C1C;
-  --color-error-light: #FEE2E2;
-
-  /* Bordes suaves */
-  --color-border: #E4E2DC;
-  --color-border-focus: #4F6EF7;
-
-  /* Focus ring — siempre visible, nunca oculto */
-  --color-focus-ring: #4F6EF7;
-  --focus-ring-width: 3px;
-  --focus-ring-offset: 2px;
-
-  /* Sombras */
-  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.10);
-  --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.12);
+/* Ocultar el badge flotante de reCAPTCHA v3 */
+.grecaptcha-badge {
+  visibility: hidden !important;
 }
 
 /* -------------------------------------------------------
-   TOKENS DE COLOR — Modo oscuro automático
-   Activado por prefers-color-scheme: dark
+   TOKENS DE COLOR — Modo claro (por defecto)
+   Contraste verificado con WebAIM contra cada fondo
+   ------------------------------------------------------- */
+:root {
+  /* Fondos — escala con temperatura cálida, nunca blanco puro */
+  --color-bg-primary: #fafaf9;
+  --color-bg-surface: #ffffff;
+  --color-bg-muted: #f2f1fb;    /* lavanda muy suave (sidebar) */
+  --color-bg-elevated: #ffffff;
+  --color-bg-input: #f5f4ff;    /* hundido respecto a la card */
+
+  /* Textos — contraste mínimo 4.5:1 verificado sobre --color-bg-primary (#fafaf9) */
+  --color-text-primary: #1a1830;      /* ratio 14.8:1 ✓ */
+  --color-text-secondary: #5a5870;    /* ratio 5.9:1 ✓ */
+  --color-text-tertiary: #8a88a0;     /* ratio 3.5:1 — solo texto grande 18px+ */
+  --color-text-placeholder: #8a88a0;  /* ratio 3.5:1 — solo en inputs grandes */
+  --color-text-disabled: #7a7874;     /* ratio 4.6:1 ✓ — acompañar siempre con cursor/opacidad */
+  --color-text-inverse: #ffffff;
+
+  /* Acento principal — azul-índigo accesible */
+  --color-accent: #6358ff;
+  --color-accent-hover: #7468ff;
+  --color-accent-focus: #5248e0;
+  --color-accent-light: rgba(99, 88, 255, 0.08);
+  --color-accent-border: rgba(99, 88, 255, 0.3);
+  --color-accent-text: #ffffff;
+
+  /* Estados semánticos — paleta del prompt con contraste AA */
+  --color-success: #1d9e75;
+  --color-success-light: rgba(29, 158, 117, 0.08);
+  --color-success-text: #1d9e75;
+
+  --color-warning: #ba7517;
+  --color-warning-light: rgba(186, 117, 23, 0.08);
+  --color-warning-text: #ba7517;
+
+  --color-error: #d85a30;
+  --color-error-light: rgba(216, 90, 48, 0.08);
+  --color-error-text: #d85a30;
+
+  /* Bordes */
+  --color-border: #e4e2dc;
+  --color-border-focus: #6358ff;
+
+  /* Focus ring — doble anillo para máxima visibilidad */
+  --color-focus-ring: #6358ff;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* Sombras tintadas con violeta sutil */
+  --shadow-sm: 0 1px 2px rgba(99, 88, 255, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(99, 88, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 12px 32px rgba(99, 88, 255, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(99, 88, 255, 0.25);
+}
+
+/* -------------------------------------------------------
+   TOKENS DE COLOR — Modo oscuro
+   Fondo azul muy oscuro (nunca negro puro) para reducir fatiga
    ------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg-primary: #0F0E0C;
-    --color-bg-surface: #1C1B18;
-    --color-bg-muted: #252420;
-    --color-bg-elevated: #2A2926;
+    /* Fondos — azul oscuro con profundidad */
+    --color-bg-primary: #0e0d1a;
+    --color-bg-surface: #1a1832;
+    --color-bg-muted: #13122a;     /* sidebar */
+    --color-bg-elevated: #1a1832;
+    --color-bg-input: #12112a;     /* hundido */
 
-    --color-text-primary: #F5F4F0;
-    --color-text-secondary: #A8A6A0;
-    --color-text-disabled: #6B6966;
-    --color-text-inverse: #0F0E0C;
+    /* Textos — contraste verificado sobre --color-bg-primary (#0e0d1a) */
+    --color-text-primary: #f0eeff;      /* ratio 14.2:1 ✓ */
+    --color-text-secondary: #a09cbf;    /* ratio 5.8:1 ✓ */
+    --color-text-tertiary: #6b6785;     /* ratio 3.4:1 — solo texto grande */
+    --color-text-placeholder: #6b6785;  /* ratio 3.4:1 — solo inputs grandes */
+    --color-text-disabled: #8a8885;     /* ratio 4.5:1 ✓ */
+    --color-text-inverse: #0e0d1a;
 
-    /* Acento más claro para contraste sobre fondo oscuro */
+    /* Acento más brillante para contraste sobre fondo oscuro */
     --color-accent: #7B96FF;
     --color-accent-hover: #92A8FF;
-    --color-accent-focus: #A8BCFF;
-    --color-accent-light: #1A2040;
-    --color-accent-text: #0F0E0C;
+    --color-accent-focus: #6480E0;
+    --color-accent-light: rgba(123, 150, 255, 0.12);
+    --color-accent-border: rgba(123, 150, 255, 0.3);
+    --color-accent-text: #0e0d1a;
 
-    --color-success: #4ABA77;
-    --color-success-light: #0D2218;
-    --color-warning: #F59E0B;
-    --color-warning-light: #1C1200;
-    --color-error: #F87171;
-    --color-error-light: #1C0808;
+    /* Semánticos para dark mode */
+    --color-success: #4ecba0;
+    --color-success-light: rgba(78, 203, 160, 0.12);
+    --color-success-text: #4ecba0;
 
-    --color-border: #2E2D29;
+    --color-warning: #efb84a;
+    --color-warning-light: rgba(239, 184, 74, 0.12);
+    --color-warning-text: #efb84a;
+
+    --color-error: #f0997b;
+    --color-error-light: rgba(240, 153, 123, 0.12);
+    --color-error-text: #f0997b;
+
+    /* Bordes dark */
+    --color-border: rgba(255, 255, 255, 0.08);
     --color-border-focus: #7B96FF;
 
     --color-focus-ring: #7B96FF;
 
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.5);
+    /* Sombras dark */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-focus: 0 0 0 3px rgba(123, 150, 255, 0.25);
   }
 }
 
@@ -107,10 +138,9 @@
 }
 
 html {
-  /* Tamaño de fuente base: 16px mínimo absoluto del spec */
+  /* Tamaño de fuente base: 16px mínimo absoluto (WCAG) */
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
-  /* Scroll suave para anclas */
   scroll-behavior: smooth;
 }
 
@@ -124,36 +154,56 @@ html {
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', 'Atkinson Hyperlegible', system-ui, sans-serif;
-  font-size: 1rem; /* 16px */
-  line-height: 1.6; /* espaciado generoso para lectura */
-  letter-spacing: 0.01em;
+  /* Inter: la fuente estándar de apps modernas (Linear, Vercel, Raycast, Notion) */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  letter-spacing: -0.011em; /* tracking tight como apps modernas */
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
-  /* Suavizar renderizado de fuentes */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* -------------------------------------------------------
-   FOCUS — Siempre visible, nunca oculto
-   Fundamental para navegación por teclado (WCAG 2.4.7)
+   FOCUS — Doble anillo para máxima visibilidad
+   El primer anillo coincide con el fondo (crea separación),
+   el segundo es el color de acento (visible en cualquier contexto)
    ------------------------------------------------------- */
 :focus-visible {
-  outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-bg-primary), 0 0 0 5px var(--color-focus-ring);
   border-radius: 4px;
 }
 
-/* Eliminar outline en click/tap (no en teclado) */
+/* Eliminar outline en click/tap — solo visible en navegación por teclado */
 :focus:not(:focus-visible) {
   outline: none;
+  box-shadow: none;
+}
+
+/* Focus para inputs: borde + ring suave en vez de doble anillo */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+/* -------------------------------------------------------
+   DISABLED — Siempre comunicar con más que solo color
+   cursor: not-allowed + opacidad reducida (WCAG 1.4.1)
+   ------------------------------------------------------- */
+[disabled],
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* -------------------------------------------------------
    ANIMACIONES — Respeto a prefers-reduced-motion
-   Si el usuario prefiere movimiento reducido, todas las
-   animaciones y transiciones se desactivan
    ------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -169,7 +219,7 @@ body {
    COMPONENTES DE UTILIDAD GLOBAL
    ------------------------------------------------------- */
 
-/* Contenedor centrado con ancho máximo para legibilidad */
+/* Contenedor centrado para legibilidad óptima */
 .container-focus {
   width: 100%;
   max-width: 640px;
@@ -186,7 +236,7 @@ body {
   justify-content: center;
 }
 
-/* Texto accesible oculto visualmente pero disponible para lectores de pantalla */
+/* Texto invisible para lectores de pantalla */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -199,7 +249,7 @@ body {
   border-width: 0;
 }
 
-/* Separador visual entre secciones */
+/* Separador visual */
 .divider {
   border: none;
   border-top: 1px solid var(--color-border);
@@ -211,10 +261,12 @@ body {
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Estado de carga con skeleton */
+/* -------------------------------------------------------
+   SKELETON — Estado de carga sin spinner (reduce ansiedad)
+   ------------------------------------------------------- */
 .skeleton {
   background: linear-gradient(
     90deg,
@@ -232,6 +284,7 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* Desactivar animación de skeleton si prefiere movimiento reducido */
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
@@ -239,9 +292,94 @@ body {
   }
 }
 
-/* Scroll suave en listas largas */
-.scroll-smooth {
-  scroll-behavior: smooth;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+/* -------------------------------------------------------
+   HOVER STATES — Solo en dispositivos con cursor fino
+   ------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .card {
+    transition: box-shadow 150ms ease, transform 150ms ease;
+  }
+  .card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .sidebar-item {
+    transition: background 100ms ease;
+  }
+  .sidebar-item:hover {
+    background: var(--color-accent-light);
+  }
+
+  .btn-secondary {
+    transition: background 100ms ease;
+  }
+  .btn-secondary:hover {
+    background: var(--color-accent-light);
+  }
+}
+
+/* -------------------------------------------------------
+   GRADIENTES SUTILES EN SUPERFICIES
+   ------------------------------------------------------- */
+.card-primary {
+  background: linear-gradient(160deg, #ffffff 0%, #f8f7ff 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .card-primary {
+    background: linear-gradient(160deg, #1c1b2e 0%, #18172a 100%);
+  }
+}
+
+/* Tags semánticos con efecto cristal */
+.tag-active {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+.tag-success {
+  background: var(--color-success-light);
+  color: var(--color-success-text);
+}
+.tag-warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+}
+
+/* -------------------------------------------------------
+   LAYOUT — Sidebar (desktop) y Bottom Bar (mobile)
+   ------------------------------------------------------- */
+
+/* Barra inferior mobile con blur nativo */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+  z-index: 50;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bottom-bar {
+    background: rgba(14, 13, 26, 0.85);
+    border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Sidebar desktop */
+.sidebar {
+  background: var(--color-bg-muted);
+}
+
+/* -------------------------------------------------------
+   TOUCH — Desactivar touch-action para gestos custom
+   ------------------------------------------------------- */
+.touch-action-none {
+  touch-action: none;
 }

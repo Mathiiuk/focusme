@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useDrag } from '@use-gesture/react'
+import { useMotion } from '@/hooks/useMotion'
 import { CheckCircle, HelpCircle, ChevronDown, ChevronUp, Clock, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { Goal, Subtask } from '@/types'
@@ -43,7 +45,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
 }) => {
   // Estado: mostrar/ocultar información secundaria
   const [showDetails, setShowDetails] = useState(false)
-  const shouldReduceMotion = useReducedMotion()
+  const { enterTransition, exitTransition, animate, transition } = useMotion()
 
   // Calcular progreso total de subtareas
   const allSubtasks = goal.tasks.flatMap((t) => t.subtasks)
@@ -57,11 +59,19 @@ export const ActionCard: React.FC<ActionCardProps> = ({
     : null
   const complexityInfo = complexity ? COMPLEXITY_LABELS[complexity] : null
 
+  // Swipe gesture for mobile (Problema 3)
+  const bind = useDrag(({ movement: [mx], last }) => {
+    if (last && mx > 80) {
+      if (navigator.vibrate) navigator.vibrate(10)
+      onDone()
+    }
+  })
+
   return (
     <motion.div
-      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={animate || { opacity: 1, y: 0 }}
+      transition={transition || enterTransition}
       className="w-full"
     >
       {/* Resumen del objetivo */}
@@ -107,7 +117,11 @@ export const ActionCard: React.FC<ActionCardProps> = ({
       )}
 
       {/* Tarjeta de la acción actual — la más importante de toda la pantalla */}
-      <div className="surface p-5 mb-4">
+      <motion.div 
+        {...bind()} 
+        className="surface p-5 mb-4 touch-action-none cursor-grab active:cursor-grabbing"
+        whileDrag={{ scale: 0.98 }}
+      >
         <div className="flex items-start gap-3">
           {/* Ícono de paso actual */}
           <div
@@ -120,7 +134,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
 
           <div className="flex-1">
             <p className="text-[13px] text-[var(--color-text-secondary)] mb-1">
-              El siguiente paso
+              El siguiente paso (desliza para completar)
             </p>
             {currentSubtask ? (
               <p className="text-[18px] font-medium text-[var(--color-text-primary)] leading-snug">
@@ -141,7 +155,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Botones de acción principales — touch target 44px mínimo */}
       <div className="flex gap-3 mb-4">
@@ -207,10 +221,10 @@ export const ActionCard: React.FC<ActionCardProps> = ({
           {showDetails && (
             <motion.div
               id="details-section"
-              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, scaleY: 0.95, transformOrigin: 'top' }}
+              animate={animate || { opacity: 1, scaleY: 1 }}
+              exit={animate || { opacity: 0, scaleY: 0.95 }}
+              transition={transition || exitTransition}
               className="overflow-hidden"
             >
               <div className="pt-3 space-y-4">

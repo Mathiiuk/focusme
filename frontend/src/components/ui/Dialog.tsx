@@ -62,8 +62,35 @@ export const Dialog: React.FC<DialogProps> = ({
   // Cerrar con tecla Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !preventOutsideClose) {
+      if (!isOpen) return
+
+      // Cerrar con Escape
+      if (e.key === 'Escape' && !preventOutsideClose) {
         onClose()
+        return
+      }
+
+      // Focus trap: Tab y Shift+Tab no salen del diálogo
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+        )
+        const firstElement = focusableElements[0]
+        const lastElement = focusableElements[focusableElements.length - 1]
+
+        if (e.shiftKey) {
+          // Shift+Tab: si estamos en el primer elemento, volver al último
+          if (document.activeElement === firstElement || document.activeElement === dialogRef.current) {
+            e.preventDefault()
+            lastElement?.focus()
+          }
+        } else {
+          // Tab: si estamos en el último elemento, volver al primero
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement?.focus()
+          }
+        }
       }
     }
     document.addEventListener('keydown', handleKeyDown)

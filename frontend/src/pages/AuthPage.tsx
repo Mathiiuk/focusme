@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import { authService } from '@/services/api'
 import { Sparkles, ArrowRight } from 'lucide-react'
+import { GoogleLogin, CredentialResponse, GoogleOAuthProvider } from '@react-oauth/google'
+import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 
 // -------------------------------------------------------
 // Tipos de vistas dentro de AuthPage
@@ -27,11 +29,11 @@ const TIMEZONES = [
 ]
 
 // -------------------------------------------------------
-// Página de autenticación
+// Página de autenticación (Contenido)
 // Tres vistas: login → register → onboarding
 // El onboarding solo pregunta nombre y zona horaria
 // -------------------------------------------------------
-const AuthPage: React.FC = () => {
+const AuthPageContent: React.FC = () => {
   const navigate = useNavigate()
   const shouldReduceMotion = useReducedMotion()
   const { setAuth, updateUser } = useAuthStore()
@@ -43,11 +45,47 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [timezone, setTimezone] = useState('America/Argentina/Buenos_Aires')
+  const [timezone, setTimezone] = useState(() => {
+    // Auto-detectar la zona horaria del navegador para preseleccionar
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
+    // Usar la detectada si está en nuestra lista, o Argentina como fallback
+    const isKnown = TIMEZONES.some(tz => tz.value === detected)
+    return isKnown ? detected : 'America/Argentina/Buenos_Aires'
+  })
 
   // Estado de carga y errores
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const { executeRecaptcha } = useGoogleReCaptcha()
+
+  // -------------------------------------------------------
+  // Manejar login con Google
+  // -------------------------------------------------------
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA no está disponible en este momento')
+      }
+      const recaptchaToken = await executeRecaptcha('google_login')
+      
+      const { user, accessToken } = await authService.googleLogin(credentialResponse.credential!, recaptchaToken)
+      setAuth(user, accessToken)
+      
+      // Si el usuario no tiene nombre (es nuevo), pedir onboarding
+      if (!user.name) {
+        setView('onboarding')
+      } else {
+        navigate('/', { replace: true })
+      }
+    } catch (err: any) {
+      setError(err.message ?? 'No pudimos iniciar sesión con Google.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // -------------------------------------------------------
   // Manejar login
@@ -143,6 +181,23 @@ const AuthPage: React.FC = () => {
                   Bienvenido de vuelta
                 </h2>
 
+                <div className="mb-6 flex justify-center">
+                  <GoogleLogin 
+                    onSuccess={handleGoogleSuccess} 
+                    onError={() => setError('Falló el inicio de sesión con Google')} 
+                    useOneTap
+                  />
+                </div>
+
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-[var(--color-border)]"></span>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-[var(--color-bg-surface)] px-2 text-[var(--color-text-secondary)]">O con email</span>
+                  </div>
+                </div>
+
                 <form onSubmit={handleLogin} noValidate className="space-y-4">
                   <Input
                     id="login-email"
@@ -215,6 +270,22 @@ const AuthPage: React.FC = () => {
                 <p className="text-[14px] mb-5" style={{ color: 'var(--color-text-secondary)' }}>
                   Solo necesitamos tu email y una contraseña. Sin datos extra.
                 </p>
+
+                <div className="mb-6 flex justify-center">
+                  <GoogleLogin 
+                    onSuccess={handleGoogleSuccess} 
+                    onError={() => setError('Falló el registro con Google')} 
+                  />
+                </div>
+
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-[var(--color-border)]"></span>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-[var(--color-bg-surface)] px-2 text-[var(--color-text-secondary)]">O con email</span>
+                  </div>
+                </div>
 
                 <form onSubmit={handleRegister} noValidate className="space-y-4">
                   <Input
@@ -358,6 +429,20 @@ const AuthPage: React.FC = () => {
         </AnimatePresence>
       </div>
     </main>
+  )
+}
+
+// -------------------------------------------------------
+// Wrapper de Autenticación
+// Solo cargamos Google Auth y reCAPTCHA en esta ruta para optimizar rendimiento
+// -------------------------------------------------------
+const AuthPage: React.FC = () => {
+  return (
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+      <GoogleReCaptchaProvider reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''}>
+        <AuthPageContent />
+      </GoogleReCaptchaProvider>
+    </GoogleOAuthProvider>
   )
 }
 

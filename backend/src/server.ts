@@ -9,7 +9,7 @@ import rateLimit from 'express-rate-limit'
 import cookieParser from 'cookie-parser'
 
 // Importar controllers directamente (en fase 1 sin router separado por claridad)
-import { register, login, logout, completeOnboarding } from './controllers/auth.controller'
+import { register, login, logout, completeOnboarding, googleAuth } from './controllers/auth.controller'
 import {
   createGoal,
   getGoals,
@@ -20,6 +20,7 @@ import {
 import { createBlock, resolveBlock } from './controllers/blocks.controller'
 import { getMe, logEnergy, getStats } from './controllers/users.controller'
 import { chatWithCoach } from './controllers/chat.controller'
+import { getProfile, updateProfile } from './controllers/profile.controller'
 import { authenticate } from './middleware/auth.middleware'
 
 // -------------------------------------------------------
@@ -116,6 +117,7 @@ app.get('/health', (_req, res) => {
 // -------------------------------------------------------
 app.post('/api/v1/auth/register', authLimiter, register)
 app.post('/api/v1/auth/login', authLimiter, login)
+app.post('/api/v1/auth/google', authLimiter, googleAuth)
 app.post('/api/v1/auth/logout', logout)
 app.patch('/api/v1/auth/onboarding', authenticate, completeOnboarding)
 
@@ -145,6 +147,12 @@ app.get('/api/v1/stats', authenticate, getStats)
 // Rutas de Chat Cognitivo (Fase 2)
 // -------------------------------------------------------
 app.post('/api/v1/chat', authenticate, chatWithCoach)
+
+// -------------------------------------------------------
+// Rutas de Perfil (Fase 3)
+// -------------------------------------------------------
+app.get('/api/v1/profile', authenticate, getProfile)
+app.patch('/api/v1/profile', authenticate, updateProfile)
 
 // -------------------------------------------------------
 // Manejo de rutas no encontradas (404)

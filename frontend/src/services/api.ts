@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 // Capa de servicios: todas las llamadas a la API del backend
 // Centralizar aquí evita duplicar la lógica de fetch en los componentes
+import { useAuthStore } from '@/stores'
 
 import type {
   AuthResponse,
@@ -11,6 +12,7 @@ import type {
   Goal,
   CreateGoalPayload,
   BlockReason,
+  EnergyLog,
 } from '@/types'
 
 // URL base de la API: en desarrollo usa el proxy de Vite, en producción usa la variable de entorno
@@ -27,21 +29,39 @@ async function apiFetch<T>(
   const stored = localStorage.getItem('focusflow-auth')
   const token = stored ? JSON.parse(stored)?.state?.accessToken : null
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      // Incluir token JWT si está disponible
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-    credentials: 'include', // para enviar cookies de refresh token
-  })
+  // Intentar la petición, capturando errores de red
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        // Incluir token JWT si está disponible
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+      credentials: 'include', // para enviar cookies de refresh token
+    })
+  } catch (networkError) {
+    // Error de red (sin conexión, DNS, etc.)
+    const error = new Error('No hay conexión. Revisá tu internet y volvé a intentarlo.')
+    ;(error as any).code = 'ERR_NETWORK'
+    throw error
+  }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      // Token expirado o inválido: limpiar sesión y redirigir al login
+      useAuthStore.getState().clearAuth()
+      window.location.href = '/auth'
+    }
     // Extraer mensaje de error del backend si está disponible
     const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.message ?? `Error ${response.status}`)
+    // Crear error enriquecido con status para React Query y errorMessages.ts
+    const error = new Error(errorData.message ?? `Error ${response.status}`)
+    ;(error as any).status = response.status
+    ;(error as any).code = errorData.code
+    throw error
   }
 
   return response.json()
@@ -67,6 +87,7 @@ export interface CompleteSubtaskResponse {
   leveledUp?: boolean
   xp?: number
   level?: number
+  newAchievements?: { type: string; name: string; emoji: string; description: string }[]
 }
 
 export interface DailyStat {
@@ -74,6 +95,31 @@ export interface DailyStat {
   label: string
   tasks: number
   energy: number | null
+}
+
+export interface Achievement {
+  type: string
+  name: string
+  description: string
+  emoji: string
+  unlocked: boolean
+  earnedAt: string | null
+}
+
+export interface ProfileData {
+  id: string
+  email: string
+  name: string | null
+  timezone: string
+  level: number
+  xp: number
+  streakDays: number
+  graceDaysUsed: number
+  createdAt: string
+  achievements: { type: string; earnedAt: string }[]
+  goalsCompleted: number
+  totalGoals: number
+  subtasksCompleted: number
 }
 
 export const authService = {
@@ -95,12 +141,25 @@ export const authService = {
   logout: () =>
     apiFetch<void>('/auth/logout', { method: 'POST' }),
 
-  /** Completar onboarding post-registro */
-  completeOnboarding: (payload: OnboardingPayload) =>
-    apiFetch<User>('/auth/onboarding', {
+  /**
+   * Completar onboarding
+   */
+  completeOnboarding: async (payload: OnboardingPayload): Promise<User> => {
+    return apiFetch('/auth/onboarding', {
       method: 'PATCH',
       body: JSON.stringify(payload),
-    }),
+    })
+  },
+
+  /**
+   * Iniciar sesión con Google (y reCAPTCHA)
+   */
+  googleLogin: async (credential: string, recaptchaToken: string): Promise<AuthResponse> => {
+    return apiFetch('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential, recaptchaToken }),
+    })
+  },
 }
 
 // -------------------------------------------------------
@@ -121,6 +180,10 @@ export const goalService = {
   /** Listar todos los objetivos activos del usuario */
   getActive: () =>
     apiFetch<Goal[]>('/goals?status=ACTIVE'),
+
+  /** Listar TODOS los objetivos del usuario (para el timeline) */
+  getAll: () =>
+    apiFetch<Goal[]>('/goals'),
 
   /** Marcar objetivo como completado */
   complete: (id: string) =>
@@ -196,6 +259,22 @@ export const chatService = {
       method: 'POST',
       body: JSON.stringify({ message })
     })
+}
+
+// -------------------------------------------------------
+// Servicios de Perfil (Fase 3)
+// -------------------------------------------------------
+export const profileService = {
+  /** Obtener perfil completo con logros y contadores */
+  getProfile: () =>
+    apiFetch<ProfileData>('/profile'),
+
+  /** Actualizar nombre y/o zona horaria */
+  updateProfile: (data: { name?: string; timezone?: string }) =>
+    apiFetch<{ id: string; name: string; timezone: string }>('/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
 }
 
 // -------------------------------------------------------

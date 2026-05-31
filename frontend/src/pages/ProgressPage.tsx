@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { userService } from '@/services/api'
-import type { DailyStat } from '@/types'
+import type { DailyStat } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { ArrowLeft, Activity, Zap } from 'lucide-react'
@@ -8,15 +9,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 export const ProgressPage: React.FC = () => {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<DailyStat[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    userService.getStats()
-      .then(data => setStats(data))
-      .catch(err => console.error('Error fetching stats:', err))
-      .finally(() => setLoading(false))
-  }, [])
+  // Usar React Query para cachear las estadísticas y evitar cargas repetitivas
+  const { data: stats = [], isLoading: loading } = useQuery({
+    queryKey: ['progressStats'],
+    queryFn: () => userService.getStats(),
+  })
 
   if (loading) {
     return (

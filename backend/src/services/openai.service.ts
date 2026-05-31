@@ -261,8 +261,8 @@ export async function decomposeGoal(
     try {
       const userPrompt = buildDecompositionPrompt({ input, energyLevel })
 
-      // Determinar el modelo dinámicamente: gemini-1.5-flash si es clave de Google, gpt-4o en caso de OpenAI
-      const modelName = isGeminiKey ? 'gemini-1.5-flash' : 'gpt-4o'
+      // Determinar el modelo dinámicamente: gemini-3.5-flash si es clave de Google, gpt-4o en caso de OpenAI
+      const modelName = isGeminiKey ? 'gemini-3.5-flash' : 'gpt-4o'
 
       const response = await openai.chat.completions.create({
         model: modelName, // Selección del modelo adecuado según el proveedor detectado
@@ -337,8 +337,8 @@ export async function getBlockHelp(
 
   try {
     const blockPrompt = BLOCK_PROMPTS[reason]
-    // Seleccionar dinámicamente gemini-1.5-flash si se detecta clave de Google, o gpt-4o para OpenAI
-    const modelName = isGeminiKey ? 'gemini-1.5-flash' : 'gpt-4o'
+    // Seleccionar dinámicamente gemini-3.5-flash si se detecta clave de Google, o gpt-4o para OpenAI
+    const modelName = isGeminiKey ? 'gemini-3.5-flash' : 'gpt-4o'
     const response = await openai.chat.completions.create({
       model: modelName, // Selección automática del modelo según la clave provista
       messages: [
@@ -381,7 +381,7 @@ export async function generateCoachResponse(message: string, context?: string): 
   }
 
   try {
-    const modelName = isGeminiKey ? 'gemini-1.5-flash' : 'gpt-4o-mini'
+    const modelName = isGeminiKey ? 'gemini-3.5-flash' : 'gpt-4o-mini'
     const systemContent = COACH_SYSTEM_PROMPT + (context ? `\nContexto del usuario: ${context}` : '')
     
     const response = await openai.chat.completions.create({

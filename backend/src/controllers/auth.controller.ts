@@ -5,6 +5,9 @@ import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import { PrismaClient } from '@prisma/client'
 import { generateTokens } from '../middleware/auth.middleware'
+import { OAuth2Client } from 'google-auth-library'
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const prisma = new PrismaClient()
 
@@ -177,6 +180,121 @@ export async function logout(req: Request, res: Response): Promise<void> {
   // Limpiar la cookie
   res.clearCookie('refreshToken')
   res.json({ message: 'Sesión cerrada correctamente' })
+}
+
+// -------------------------------------------------------
+// POST /api/v1/auth/google
+// Login/Registro con Google y reCAPTCHA v3
+// -------------------------------------------------------
+export async function googleAuth(req: Request, res: Response): Promise<void> {
+  const { credential, recaptchaToken } = req.body
+
+  if (!credential || !recaptchaToken) {
+    res.status(400).json({ message: 'Credenciales incompletas' })
+    return
+  }
+
+  try {
+    // 1. Validar reCAPTCHA
+    const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY
+    if (recaptchaSecret) {
+      const recaptchaResponse = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`, {
+        method: 'POST',
+      })
+      const recaptchaData = await recaptchaResponse.json() as { success: boolean; score: number }
+      
+      if (!recaptchaData.success || recaptchaData.score < 0.5) {
+        console.warn('[Auth] reCAPTCHA falló o puntaje muy bajo:', recaptchaData)
+        res.status(403).json({ message: 'Verificación de seguridad fallida. ¿Sos un robot?' })
+        return
+      }
+    }
+
+    // 2. Validar token de Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    })
+    const payload = ticket.getPayload()
+    
+    if (!payload || !payload.email) {
+      res.status(400).json({ message: 'Token de Google inválido' })
+      return
+    }
+
+    const { email, name } = payload
+
+    // 3. Buscar o crear usuario
+    let user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        timezone: true,
+        level: true,
+        xp: true,
+        streakDays: true,
+        createdAt: true,
+      },
+    })
+
+    if (!user) {
+      // Crear usuario nuevo (sin contraseña, ya que usa Google)
+      // Generamos un passwordHash vacío o un string aleatorio imposible de adivinar
+      const randomPassword = Math.random().toString(36).slice(-8)
+      const passwordHash = await bcrypt.hash(randomPassword, 12)
+
+      const newUser = await prisma.user.create({
+        data: { 
+          email, 
+          passwordHash,
+          name: name || null
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          timezone: true,
+          level: true,
+          xp: true,
+          streakDays: true,
+          createdAt: true,
+        },
+      })
+      user = newUser
+    } else {
+      // Actualizar timestamp de última actividad
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastActiveAt: new Date() },
+      })
+    }
+
+    // 4. Generar tokens JWT
+    const { accessToken, refreshToken } = generateTokens(user.id, user.email)
+
+    // Guardar nuevo refresh token
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    })
+
+    res.json({ user, accessToken })
+  } catch (error) {
+    console.error('[Auth] Error en googleAuth:', error)
+    res.status(500).json({ message: 'Error al iniciar sesión con Google' })
+  }
 }
 
 // -------------------------------------------------------

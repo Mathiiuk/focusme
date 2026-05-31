@@ -2,11 +2,16 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores'
+import { AppShell } from '@/components/layout/AppShell'
+import { ReloadPrompt } from '@/components/pwa/ReloadPrompt'
 
-// Importar páginas de forma lazy para reducir el bundle inicial
-const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'))
+import DashboardPage from '@/pages/DashboardPage'
+import ProgressPage from '@/pages/ProgressPage'
+import TimelinePage from '@/pages/TimelinePage'
+import ProfilePage from '@/pages/ProfilePage'
+
+// Importar páginas de forma lazy solo para las que no son críticas (o pesadas)
 const AdhdModePage = React.lazy(() => import('@/pages/AdhdModePage'))
-const ProgressPage = React.lazy(() => import('@/pages/ProgressPage'))
 const AuthPage = React.lazy(() => import('@/pages/AuthPage'))
 
 // -------------------------------------------------------
@@ -15,12 +20,17 @@ const AuthPage = React.lazy(() => import('@/pages/AuthPage'))
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Reintentar solo una vez en caso de error
-      retry: 1,
+      // Reintentar solo una vez en caso de error, excepto si es 401/403
+      retry: (failureCount, error: any) => {
+        if (error?.status === 401 || error?.status === 403) return false
+        return failureCount < 1
+      },
       // Refetch al volver a enfocar la ventana
       refetchOnWindowFocus: false,
-      // Cache de 5 minutos
-      staleTime: 5 * 60 * 1000,
+      // Cache de 2 minutos por defecto
+      staleTime: 1000 * 60 * 2,
+      // Tiempo antes de recolectar basura (10 mins)
+      gcTime: 1000 * 60 * 10,
     },
   },
 })
@@ -57,6 +67,15 @@ const LoadingScreen: React.FC = () => (
 )
 
 // -------------------------------------------------------
+// Layout protegido con AppShell (header + navegación)
+// -------------------------------------------------------
+const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <ProtectedRoute>
+    <AppShell>{children}</AppShell>
+  </ProtectedRoute>
+)
+
+// -------------------------------------------------------
 // Componente raíz de la aplicación
 // -------------------------------------------------------
 function App() {
@@ -82,40 +101,20 @@ function App() {
             {/* Ruta de autenticación — accesible sin login */}
             <Route path="/auth" element={<AuthPage />} />
 
-            {/* Ruta principal protegida */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Modo TDAH — protegido */}
-            <Route
-              path="/focus"
-              element={
-                <ProtectedRoute>
-                  <AdhdModePage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Progreso — protegido */}
-            <Route
-              path="/progress"
-              element={
-                <ProtectedRoute>
-                  <ProgressPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Rutas protegidas con AppShell (header + nav) */}
+            <Route path="/" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
+            <Route path="/focus" element={<ProtectedLayout><AdhdModePage /></ProtectedLayout>} />
+            <Route path="/progress" element={<ProtectedLayout><ProgressPage /></ProtectedLayout>} />
+            <Route path="/timeline" element={<ProtectedLayout><TimelinePage /></ProtectedLayout>} />
+            <Route path="/profile" element={<ProtectedLayout><ProfilePage /></ProtectedLayout>} />
 
             {/* Cualquier ruta no encontrada redirige al inicio */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </React.Suspense>
+        
+        {/* PWA Update Prompt */}
+        <ReloadPrompt />
       </BrowserRouter>
     </QueryClientProvider>
   )

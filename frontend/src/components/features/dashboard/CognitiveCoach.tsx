@@ -50,7 +50,7 @@ export const CognitiveCoach: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 p-4 rounded-full bg-[var(--color-accent)] text-white shadow-xl hover:scale-105 transition-transform z-40 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          className="fixed bottom-24 right-4 md:bottom-6 md:right-6 p-4 rounded-full bg-[var(--color-accent)] text-white shadow-xl hover:scale-105 transition-transform z-40 focus:outline-none focus:ring-4 focus:ring-blue-300"
           aria-label="Hablar con el coach cognitivo"
         >
           <MessageCircle size={28} />
@@ -63,7 +63,7 @@ export const CognitiveCoach: React.FC = () => {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-6 right-6 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[80vh] bg-[var(--color-bg-primary)] rounded-2xl shadow-2xl border border-[var(--color-border)] flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-24 right-4 md:bottom-6 md:right-6 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[80vh] bg-[var(--color-bg-primary)] rounded-2xl shadow-2xl border border-[var(--color-border)] flex flex-col z-50 overflow-hidden"
           >
             <div className="bg-[var(--color-accent)] text-white p-4 flex justify-between items-center">
               <div className="flex items-center gap-3">

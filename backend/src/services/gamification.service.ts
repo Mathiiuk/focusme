@@ -2,6 +2,7 @@
 // Maneja XP, niveles, rachas y "días de gracia" (TDAH-friendly)
 
 import { PrismaClient, User } from '@prisma/client'
+import { checkAndGrantAchievements } from './achievements.service'
 
 const prisma = new PrismaClient()
 
@@ -75,5 +76,8 @@ export async function processGamification(userId: string, xpToAdd: number) {
     }
   })
 
-  return { user: updatedUser, leveledUp }
+  // Verificar y otorgar logros pendientes (Fase 3)
+  const newAchievements = await checkAndGrantAchievements(userId)
+
+  return { user: updatedUser, leveledUp, newAchievements }
 }

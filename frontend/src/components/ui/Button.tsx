@@ -131,6 +131,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={classes}
         disabled={disabled || isLoading}
+        aria-busy={isLoading || undefined}
+        aria-disabled={disabled || isLoading || undefined}
         // Animación de tap: escala leve al presionar
         whileTap={shouldReduceMotion ? {} : { scale: 0.97 }}
         // Sin hover animación: el CSS ya lo maneja más suavemente

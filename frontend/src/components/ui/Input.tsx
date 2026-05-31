@@ -46,7 +46,7 @@ export const GoalTextarea = React.forwardRef<HTMLTextAreaElement, InputProps>(
             // Base: fondo de superficie, borde suave
             'w-full resize-none rounded-md border transition-colors duration-150',
             'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)]',
-            'placeholder:text-[var(--color-text-disabled)]',
+            'placeholder:text-[var(--color-text-placeholder)]',
             // Borde normal
             'border-[var(--color-border)]',
             // Borde en focus — sin outline nativo, usamos ring de Tailwind
@@ -122,7 +122,7 @@ export const Input = React.forwardRef<HTMLInputElement, SimpleInputProps>(
             'w-full rounded-md border px-4 py-3',
             'text-[16px] text-[var(--color-text-primary)]',
             'bg-[var(--color-bg-surface)]',
-            'placeholder:text-[var(--color-text-disabled)]',
+            'placeholder:text-[var(--color-text-placeholder)]',
             'border-[var(--color-border)]',
             // Touch target mínimo: height de 44px
             'min-h-[44px]',

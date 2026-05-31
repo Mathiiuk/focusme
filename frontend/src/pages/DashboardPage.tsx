@@ -6,14 +6,15 @@ import { BlockDialog } from '@/components/features/dashboard/BlockDialog'
 import { useBlockDetection } from '@/hooks/useBlockDetection'
 import { useDashboardStore, useAdhdStore } from '@/stores'
 import { goalService, userService } from '@/services/api'
-import type { Goal, BlockReason, UserProfile } from '@/types'
+import type { UserProfile } from '@/services/api'
+import type { Goal, BlockReason } from '@/types'
 import { useNavigate } from 'react-router-dom'
 import { EnergyCheckIn } from '@/components/features/dashboard/EnergyCheckIn'
-import { UserProgress } from '@/components/features/dashboard/UserProgress'
 import { LevelUpToast } from '@/components/features/dashboard/LevelUpToast'
+import { AchievementToast } from '@/components/features/dashboard/AchievementToast'
 import { CognitiveCoach } from '@/components/features/dashboard/CognitiveCoach'
-import { BarChart2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { TaskSkeleton } from '@/components/ui/Skeleton'
+import { getDisplayError } from '@/lib/errorMessages'
 
 // -------------------------------------------------------
 // Página principal del Dashboard
@@ -39,6 +40,9 @@ const DashboardPage: React.FC = () => {
   
   // Estado para la notificación de subida de nivel
   const [levelUpData, setLevelUpData] = useState<{ isVisible: boolean; level: number }>({ isVisible: false, level: 1 })
+  
+  // Estado para notificaciones de logros (Fase 3)
+  const [achievementToastData, setAchievementToastData] = useState<{ isVisible: boolean; name: string; emoji: string; description: string }>({ isVisible: false, name: '', emoji: '', description: '' })
 
   // Cargar perfil de usuario al montar
   React.useEffect(() => {
@@ -86,7 +90,8 @@ const DashboardPage: React.FC = () => {
       setState('active')
     } catch (err) {
       setState('empty')
-      throw err // re-lanzar para que GoalInput muestre el error
+      // Re-lanzar con mensaje humano para que GoalInput lo muestre
+      throw new Error(getDisplayError(err))
     }
   }, [setState, setCurrentGoal])
 
@@ -103,23 +108,26 @@ const DashboardPage: React.FC = () => {
 
     if (!currentSubtask) return
 
-    try {
-      // Actualizar en el servidor
-      const response = await goalService.completeSubtask(currentSubtask.id)
+    // --- OPTIMISTIC UPDATE ---
+    // Actualizar UI inmediatamente para que el usuario sienta que la acción fue instantánea.
+    // La llamada al servidor ocurre en background. Si falla, revertimos silenciosamente.
+    const previousGoal = currentGoal // Guardar snapshot para poder revertir
+    const updatedGoal: Goal = {
+      ...currentGoal,
+      tasks: currentGoal.tasks.map((task) => ({
+        ...task,
+        subtasks: task.subtasks.map((sub) =>
+          sub.id === currentSubtask.id
+            ? { ...sub, status: 'COMPLETED' as const, completedAt: new Date().toISOString() }
+            : sub
+        ),
+      })),
+    }
+    setCurrentGoal(updatedGoal)
 
-      // Actualizar estado local optimistamente
-      const updatedGoal: Goal = {
-        ...currentGoal,
-        tasks: currentGoal.tasks.map((task) => ({
-          ...task,
-          subtasks: task.subtasks.map((sub) =>
-            sub.id === currentSubtask.id
-              ? { ...sub, status: 'COMPLETED' as const, completedAt: new Date().toISOString() }
-              : sub
-          ),
-        })),
-      }
-      setCurrentGoal(updatedGoal)
+    try {
+      // Ahora sí confirmar con el servidor en background
+      const response = await goalService.completeSubtask(currentSubtask.id)
 
       // Actualizar perfil de usuario si cambió el XP/Nivel
       if (userProfile && response.xp !== undefined && response.level !== undefined) {
@@ -129,10 +137,23 @@ const DashboardPage: React.FC = () => {
         if (response.leveledUp) {
           setLevelUpData({ isVisible: true, level: response.level })
         }
+
+        // Mostrar notificación de logros
+        if (response.newAchievements && response.newAchievements.length > 0) {
+          const first = response.newAchievements[0]
+          setAchievementToastData({
+            isVisible: true,
+            name: first.name,
+            emoji: first.emoji,
+            description: first.description
+          })
+        }
       }
 
     } catch (err) {
+      // Si falla, revertir silenciosamente al estado anterior sin alarmar
       console.error('Error al completar subtarea:', err)
+      setCurrentGoal(previousGoal)
     }
   }, [currentGoal, setCurrentGoal])
 
@@ -174,30 +195,13 @@ const DashboardPage: React.FC = () => {
     : null
 
   return (
-    <main className="min-h-screen bg-[var(--color-bg-primary)] p-4 md:p-8 flex flex-col items-center justify-center relative overflow-x-hidden">
-      
-      {/* Indicador de progreso del usuario (Gamificación) */}
-      {userProfile && (
-        <div className="w-full max-w-2xl">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-[var(--color-text-primary)]">Tu Perfil</h2>
-            <Button variant="outline" size="sm" onClick={() => navigate('/progress')} leftIcon={<BarChart2 size={16} />}>
-              Mi Progreso
-            </Button>
-          </div>
-          <UserProgress 
-            level={userProfile.level} 
-            xp={userProfile.xp} 
-            streakDays={userProfile.streakDays} 
-          />
-        </div>
-      )}
-
+    <div className="w-full h-full p-4 md:p-8 flex flex-col items-center justify-center relative overflow-x-hidden">
       {/* Contenedor centralizado para la animación fluida */}
       <div className="w-full max-w-lg">
         <AnimatePresence mode="wait">
           {/* Estado vacío: mostrar el campo de entrada */}
-          {(state === 'empty' || state === 'loading') && (
+          {/* Estado vacío: mostrar el campo de entrada */}
+          {state === 'empty' && (
             <motion.div
               key="input"
               initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
@@ -206,6 +210,19 @@ const DashboardPage: React.FC = () => {
               transition={{ duration: 0.2 }}
             >
               <GoalInput onSubmit={handleGoalSubmit} />
+            </motion.div>
+          )}
+
+          {/* Estado de carga: skeleton en vez de spinner (reduce ansiedad) */}
+          {state === 'loading' && (
+            <motion.div
+              key="skeleton"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <TaskSkeleton />
             </motion.div>
           )}
 
@@ -266,9 +283,17 @@ const DashboardPage: React.FC = () => {
         onClose={() => setLevelUpData(prev => ({ ...prev, isVisible: false }))} 
       />
 
+      <AchievementToast 
+        isVisible={achievementToastData.isVisible}
+        name={achievementToastData.name}
+        emoji={achievementToastData.emoji}
+        description={achievementToastData.description}
+        onClose={() => setAchievementToastData(prev => ({ ...prev, isVisible: false }))}
+      />
+
       {/* Coach Cognitivo Flotante */}
       <CognitiveCoach />
-    </main>
+    </div>
   )
 }
 

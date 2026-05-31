@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAdhdStore, useAppConfigStore } from '@/stores'
 import { Button } from '@/components/ui/Button'
 import { Volume2, VolumeX, ArrowLeft } from 'lucide-react'
+import { Icon } from '@/components/ui/Icon'
 
 // -------------------------------------------------------
 // Componente CelebrationToast
@@ -128,8 +129,13 @@ const AdhdModePage: React.FC = () => {
 
     // Mostrar celebración brevemente
     completeCurrentSubtask()
+    
+    // Feedback táctil (Problema 3)
+    if (navigator.vibrate) {
+      navigator.vibrate([10, 50, 10])
+    }
 
-    // Ocultar celebración después de 500ms exactos
+    // Ocultar celebración después de 600ms exactos (según spec del prompt)
     setTimeout(() => {
       setShowCelebration(false)
       // Verificar si era el último paso
@@ -190,7 +196,7 @@ const AdhdModePage: React.FC = () => {
             'focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2',
           ].join(' ')}
         >
-          <ArrowLeft size={16} aria-hidden="true" />
+          <Icon icon={ArrowLeft} size="md" />
           Salir
         </button>
 
@@ -220,8 +226,8 @@ const AdhdModePage: React.FC = () => {
           ].join(' ')}
         >
           {speechEnabled
-            ? <Volume2 size={18} aria-hidden="true" />
-            : <VolumeX size={18} aria-hidden="true" />
+            ? <Icon icon={Volume2} size="lg" />
+            : <Icon icon={VolumeX} size="lg" />
           }
         </button>
       </div>
