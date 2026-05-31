@@ -5,8 +5,8 @@ import AuthPage from '@/pages/AuthPage'
 
 // -------------------------------------------------------
 // Componente LandingPage: Página de presentación principal
-// Adaptado para aprovechar mejor el espacio en desktop (max-w-7xl, gaps amplios)
-// y mantener un diseño de alto nivel sin scrollbar (h-screen overflow-hidden)
+// Adaptado para móviles con un carrusel deslizable horizontal de características
+// y una distribución espacial optimizada sin scrolls infinitos
 // -------------------------------------------------------
 const LandingPage: React.FC = () => {
   // Consultar si el usuario tiene activado "Reducir movimiento" en la accesibilidad de su SO
@@ -14,10 +14,21 @@ const LandingPage: React.FC = () => {
 
   return (
     <div 
-      // h-screen y overflow-hidden en LG (escritorio) para evitar que aparezcan barras de scroll verticales molestos
-      className="relative w-full min-h-screen lg:h-screen lg:overflow-hidden flex flex-col justify-center items-center py-8 px-4 md:px-12"
+      // h-screen y overflow-hidden en LG (escritorio) para evitar que aparezcan barras de scroll; en móvil permite scroll natural y cómodo
+      className="relative w-full min-h-screen lg:h-screen lg:overflow-hidden flex flex-col justify-center items-center py-10 lg:py-8 px-4 md:px-12"
       style={{ background: 'var(--color-bg-primary)' }}
     >
+      {/* Estilos específicos para el carrusel táctil de móvil (ocultar scrollbar nativa) */}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+
       {/* ------------------------------------------------------- */}
       {/* CAPA DE DISEÑO PREMIUM: ORBES DE LUZ AURORA (BACKGROUND GLOW) */}
       {/* ------------------------------------------------------- */}
@@ -48,7 +59,7 @@ const LandingPage: React.FC = () => {
           className="lg:col-span-7 flex flex-col justify-center text-left"
         >
           {/* Logo y Nombre del sistema integrado en la columna izquierda con mayor tamaño */}
-          <div className="flex items-center gap-3.5 mb-8">
+          <div className="flex items-center gap-3.5 mb-6 lg:mb-8">
             <div 
               className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md"
               style={{ background: 'var(--color-accent)' }}
@@ -61,7 +72,7 @@ const LandingPage: React.FC = () => {
           </div>
 
           {/* Titular principal rediseñado: tipografía extrabold ampliada en desktop */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-black tracking-tight leading-[1.05] mb-6 text-[var(--color-text-primary)]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-black tracking-tight leading-[1.05] mb-4 lg:mb-6 text-[var(--color-text-primary)]">
             Superá la parálisis por análisis.
             <span className="block mt-2 text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent)] to-[#a78bfa]">
               Lográ tus metas, paso a paso.
@@ -69,15 +80,15 @@ const LandingPage: React.FC = () => {
           </h1>
 
           {/* Subtítulo informativo ajustado con más espacio de aire y tamaño de texto mejorado */}
-          <p className="text-sm sm:text-base md:text-lg text-[var(--color-text-secondary)] leading-relaxed mb-10 max-w-2xl">
+          <p className="text-sm sm:text-base md:text-lg text-[var(--color-text-secondary)] leading-relaxed mb-6 lg:mb-10 max-w-2xl">
             Un GPS cognitivo diseñado para mentes neurodivergentes (TDAH) y cualquier persona propensa a abrumarse. Descomponemos objetivos complejos en micro-acciones de 5 minutos, reduciendo la ansiedad y eliminando bloqueos de raíz.
           </p>
 
-          {/* Grid de Características: Estructura 2x2 con mayor tamaño y padding en desktop */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
+          {/* Grid de Características: Carrusel deslizable horizontal en móviles, grid de 2 columnas en desktop */}
+          <div className="flex sm:grid sm:grid-cols-2 gap-4 overflow-x-auto sm:overflow-x-visible pb-4 sm:pb-0 snap-x snap-mandatory max-w-2xl w-full no-scrollbar">
             
             {/* Tarjeta 1: Descomposición inteligente */}
-            <div className="flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+            <div className="flex-shrink-0 w-[280px] sm:w-auto snap-center flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
               <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                 style={{ background: 'var(--color-accent-light)' }}
@@ -95,7 +106,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             {/* Tarjeta 2: Modo de enfoque */}
-            <div className="flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+            <div className="flex-shrink-0 w-[280px] sm:w-auto snap-center flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
               <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                 style={{ background: 'rgba(59,130,246,0.1)' }}
@@ -113,7 +124,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             {/* Tarjeta 3: Coach cognitivo TCC */}
-            <div className="flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+            <div className="flex-shrink-0 w-[280px] sm:w-auto snap-center flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
               <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                 style={{ background: 'rgba(16,185,129,0.1)' }}
@@ -131,7 +142,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             {/* Tarjeta 4: Gamificación sin culpa */}
-            <div className="flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+            <div className="flex-shrink-0 w-[280px] sm:w-auto snap-center flex gap-4 p-4 rounded-xl border border-[var(--color-border)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(255,255,255,0.02)] transition-colors">
               <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                 style={{ background: 'rgba(245,158,11,0.1)' }}
@@ -159,7 +170,7 @@ const LandingPage: React.FC = () => {
           initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-          className="lg:col-span-5 flex justify-center items-center w-full"
+          className="lg:col-span-5 flex justify-center items-center w-full mt-4 lg:mt-0"
         >
           {/* Contenedor de ancho controlado para el formulario de autenticación: sin bordes ni fondos propios para evitar la duplicación de cajas */}
           <div className="w-full max-w-[390px] sm:max-w-[420px] relative z-10">
