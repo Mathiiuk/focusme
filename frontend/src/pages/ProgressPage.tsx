@@ -1,7 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { userService } from '@/services/api'
-import type { DailyStat } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { ArrowLeft, Activity, Zap } from 'lucide-react'

@@ -117,8 +117,9 @@ export const ActionCard: React.FC<ActionCardProps> = ({
       )}
 
       {/* Tarjeta de la acción actual — la más importante de toda la pantalla */}
+      {/* Usamos 'as any' para evitar la colisión del tipo 'onDrag' entre framer-motion y @use-gesture/react */}
       <motion.div 
-        {...bind()} 
+        {...(bind() as any)} 
         className="surface p-5 mb-4 touch-action-none cursor-grab active:cursor-grabbing"
         whileDrag={{ scale: 0.98 }}
       >
