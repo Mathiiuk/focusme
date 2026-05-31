@@ -28,6 +28,9 @@ import { authenticate } from './middleware/auth.middleware'
 // -------------------------------------------------------
 const app = express()
 
+// Confiar en el proxy (Vercel/Render) para que express-rate-limit obtenga la IP real mediante X-Forwarded-For
+app.set('trust proxy', 1)
+
 // -------------------------------------------------------
 // Configuración de CORS
 // Solo acepta requests desde la URL del frontend
